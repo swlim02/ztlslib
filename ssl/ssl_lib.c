@@ -3906,6 +3906,7 @@ void SSL_set_connect_state(SSL *s)
     s->shutdown = 0;
     ossl_statem_clear(s);
     s->handshake_func = s->method->ssl_connect;
+    printf("hello\n");
     clear_ciphers(s);
 }
 
