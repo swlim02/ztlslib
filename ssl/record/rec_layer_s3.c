@@ -408,13 +408,13 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf_, size_t len,
             return -1;
         }
     }
-
     /*
      * first check if there is a SSL3_BUFFER still being written out.  This
      * will happen with non blocking IO
      */
     if (wb->left != 0) {
         /* SSLfatal() already called if appropriate */
+        // no
         i = ssl3_write_pending(s, type, &buf[tot], s->rlayer.wpend_tot,
                                &tmpwrit);
         if (i <= 0) {
@@ -561,7 +561,6 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf_, size_t len,
     if (tot == len) {           /* done? */
         if (s->mode & SSL_MODE_RELEASE_BUFFERS && !SSL_IS_DTLS(s))
             ssl3_release_write_buffer(s);
-
         *written = tot;
         return 1;
     }
@@ -634,6 +633,7 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf_, size_t len,
 
         i = do_ssl3_write(s, type, &(buf[tot]), pipelens, numpipes, 0,
                           &tmpwrit);
+
         if (i <= 0) {
             /* SSLfatal() already called if appropriate */
             /* XXX should we ssl3_release_write_buffer if i<0? */

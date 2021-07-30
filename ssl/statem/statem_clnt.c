@@ -502,9 +502,10 @@ WRITE_TRAN ossl_statem_client_write_transition(SSL *s)
      * version we are going to negotiate yet, so we don't take this branch until
      * later
      */
-    if (SSL_IS_TLS13(s))
+    if (SSL_IS_TLS13(s)) {
+        printf("    SSL_IS_TLS13\n");
         return ossl_statem_client13_write_transition(s);
-
+    }
     switch (st->hand_state) {
     default:
         /* Shouldn't happen */
@@ -522,6 +523,7 @@ WRITE_TRAN ossl_statem_client_write_transition(SSL *s)
         /* Renegotiation */
         /* fall thru */
     case TLS_ST_BEFORE:
+        printf("    st->hand_state is TLS_ST_CW_CLNT_HELLO\n");
         st->hand_state = TLS_ST_CW_CLNT_HELLO;
         return WRITE_TRAN_CONTINUE;
 
@@ -531,10 +533,13 @@ WRITE_TRAN ossl_statem_client_write_transition(SSL *s)
              * We are assuming this is a TLSv1.3 connection, although we haven't
              * actually selected a version yet.
              */
-            if ((s->options & SSL_OP_ENABLE_MIDDLEBOX_COMPAT) != 0)
+            if ((s->options & SSL_OP_ENABLE_MIDDLEBOX_COMPAT) != 0){
+                printf("    st->hand_state is TLS_ST_CW_CHANGE\n");
                 st->hand_state = TLS_ST_CW_CHANGE;
-            else
+            }else{
+                printf("    st->hand_state is TLS_ST_EARLY_DATA\n");
                 st->hand_state = TLS_ST_EARLY_DATA;
+            }
             return WRITE_TRAN_CONTINUE;
         }
         /*

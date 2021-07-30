@@ -63,6 +63,7 @@ int ssl3_do_write(SSL *s, int type)
                                  written))
                 return -1;
     if (written == s->init_num) {
+        printf("        written == s->init_num\n");
         if (s->msg_callback)
             s->msg_callback(1, s->version, type, s->init_buf->data,
                             (size_t)(s->init_off + s->init_num), s,
