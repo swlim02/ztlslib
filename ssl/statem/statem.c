@@ -312,6 +312,7 @@ static info_cb get_callback(SSL *s)
  */
 static int state_machine(SSL *s, int server)
 {
+    printf("state_machine start \n");
     BUF_MEM *buf = NULL;
     void (*cb) (const SSL *ssl, int type, int val) = NULL;
     OSSL_STATEM *st = &s->statem;
@@ -339,6 +340,7 @@ static int state_machine(SSL *s, int server)
     }
 #ifndef OPENSSL_NO_SCTP
     if (SSL_IS_DTLS(s) && BIO_dgram_is_sctp(SSL_get_wbio(s))) {
+        printf("not defined OPENSSL_NO_SCTP");
         /*
          * Notify SCTP BIO socket to enter handshake mode and prevent stream
          * identifier other than 0.
@@ -352,14 +354,20 @@ static int state_machine(SSL *s, int server)
     if (st->state == MSG_FLOW_UNINITED
             || st->state == MSG_FLOW_FINISHED) {
         if (st->state == MSG_FLOW_UNINITED) {
+            printf("st->state 초기값이 MSG_FLOW_UNINITED\n");
             st->hand_state = TLS_ST_BEFORE;
             st->request_state = TLS_ST_BEFORE;
+        }else{
+            printf("st->state 초기값이 MSG_FLOW_FINISHED\n");
         }
 
         s->server = server;
         if (cb != NULL) {
-            if (SSL_IS_FIRST_HANDSHAKE(s) || !SSL_IS_TLS13(s))
+            printf("cb(call back)이 NULL이 아니다.\n");
+            if (SSL_IS_FIRST_HANDSHAKE(s) || !SSL_IS_TLS13(s)){
+                printf("cb(call back)를 세팅하네.\n");
                 cb(s, SSL_CB_HANDSHAKE_START, 1);
+            }
         }
 
         /*
@@ -369,12 +377,14 @@ static int state_machine(SSL *s, int server)
          */
 
         if (SSL_IS_DTLS(s)) {
+            printf("SSL_IS_DTLS.\n");
             if ((s->version & 0xff00) != (DTLS1_VERSION & 0xff00) &&
                 (server || (s->version & 0xff00) != (DTLS1_BAD_VER & 0xff00))) {
                 SSLfatal(s, SSL_AD_NO_ALERT, ERR_R_INTERNAL_ERROR);
                 goto end;
             }
         } else {
+            printf("!SSL_IS_DTLS.\n");
             if ((s->version >> 8) != SSL3_VERSION_MAJOR) {
                 SSLfatal(s, SSL_AD_NO_ALERT, ERR_R_INTERNAL_ERROR);
                 goto end;
@@ -387,6 +397,7 @@ static int state_machine(SSL *s, int server)
         }
 
         if (s->init_buf == NULL) {
+            printf("INIT buffer is empty.\n");
             if ((buf = BUF_MEM_new()) == NULL) {
                 SSLfatal(s, SSL_AD_NO_ALERT, ERR_R_INTERNAL_ERROR);
                 goto end;
@@ -435,27 +446,35 @@ static int state_machine(SSL *s, int server)
 
         st->state = MSG_FLOW_WRITING;
         init_write_state_machine(s);
+        printf("st->state = MSG_FLOW_WRITING.\n");
     }
 
     while (st->state != MSG_FLOW_FINISHED) {
         if (st->state == MSG_FLOW_READING) {
+            printf("st->state is MSG_FLOW_READING.\n");
             ssret = read_state_machine(s);
             if (ssret == SUB_STATE_FINISHED) {
+                printf("ssret is SUB_STATE_FINISHED.\n");
                 st->state = MSG_FLOW_WRITING;
                 init_write_state_machine(s);
             } else {
                 /* NBIO or error */
+                printf("ssret is not SUB_STATE_FINISHED.\n");
                 goto end;
             }
         } else if (st->state == MSG_FLOW_WRITING) {
+            printf("st->state is MSG_FLOW_WRITING.\n");
             ssret = write_state_machine(s);
             if (ssret == SUB_STATE_FINISHED) {
+                printf("ssret is SUB_STATE_FINISHED.\n");
                 st->state = MSG_FLOW_READING;
                 init_read_state_machine(s);
             } else if (ssret == SUB_STATE_END_HANDSHAKE) {
+                printf("ssret is SUB_STATE_END_HANDHSAKE.\n");
                 st->state = MSG_FLOW_FINISHED;
             } else {
                 /* NBIO or error */
+                printf("ssret is not SUB_STATE_FINISHED or SUB_STATE_END_HANDSHAKE.\n");
                 goto end;
             }
         } else {
@@ -484,6 +503,7 @@ static int state_machine(SSL *s, int server)
 
     BUF_MEM_free(buf);
     if (cb != NULL) {
+        printf("cb is not null.\n");
         if (server)
             cb(s, SSL_CB_ACCEPT_EXIT, ret);
         else
