@@ -1578,6 +1578,7 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
                                         unsigned int context, X509 *x,
                                         size_t chainidx)
 {
+    printf("Let's construct stoc key share\n");
 #ifndef OPENSSL_NO_TLS1_3
     unsigned char *encodedPoint;
     size_t encoded_pt_len = 0;
@@ -1630,6 +1631,7 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
 
     if (!ginf->is_kem) {
         /* Regular KEX */
+        printf("    Regular KEX mode\n");
         skey = ssl_generate_pkey(s, ckey);
         if (skey == NULL) {
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
@@ -1663,6 +1665,7 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
         }
     } else {
         /* KEM mode */
+        printf("    KEM mode\n");
         unsigned char *ct = NULL;
         size_t ctlen = 0;
 
