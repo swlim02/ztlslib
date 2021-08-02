@@ -3890,7 +3890,24 @@ int SSL_do_handshake(SSL *s)
     }
     return ret;
 }
+int SSL_do_handshake_reduce(SSL *s)
+{
+    int ret = 1;
 
+    if (s->handshake_func == NULL) {
+        ERR_raise(ERR_LIB_SSL, SSL_R_CONNECTION_TYPE_NOT_SET);
+        return -1;
+    }
+
+    ossl_statem_check_finish_init(s, -1);
+
+    s->method->ssl_renegotiate_check(s, 0);
+
+    if (SSL_in_init(s) || SSL_in_before(s)) {
+        ret = s->handshake_func(s);
+    }
+    return ret;
+}
 void SSL_set_accept_state(SSL *s)
 {
     s->server = 1;
