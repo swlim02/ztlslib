@@ -1309,10 +1309,13 @@ int tls_get_message_body(SSL *s, size_t *len)
             *len = 0;
             return 0;
         }
-        if (s->msg_callback)
+        if (s->msg_callback){
             s->msg_callback(0, SSL2_VERSION, 0, s->init_buf->data,
                             (size_t)s->init_num, s, s->msg_callback_arg);
-    } else {
+        }
+
+    } else { // Implement
+        printf("    (tls_get_message_body) 2-2\n");
         /*
          * We defer feeding in the HRR until later. We'll do it as part of
          * processing the message
@@ -1323,13 +1326,16 @@ int tls_get_message_body(SSL *s, size_t *len)
         /* KeyUpdate and NewSessionTicket do not need to be added */
         if (!SSL_IS_TLS13(s) || (s->s3.tmp.message_type != SSL3_MT_NEWSESSION_TICKET
                                  && s->s3.tmp.message_type != SSL3_MT_KEY_UPDATE)) {
+            //IMPLEMENT
             if (s->s3.tmp.message_type != SSL3_MT_SERVER_HELLO
                     || s->init_num < SERVER_HELLO_RANDOM_OFFSET + SSL3_RANDOM_SIZE
                     || memcmp(hrrrandom,
                               s->init_buf->data + SERVER_HELLO_RANDOM_OFFSET,
                               SSL3_RANDOM_SIZE) != 0) {
+                // IMPLEMENT
                 if (!ssl3_finish_mac(s, (unsigned char *)s->init_buf->data,
                                      s->init_num + SSL3_HM_HEADER_LENGTH)) {
+                    // NOT IMPLE
                     /* SSLfatal() already called */
                     *len = 0;
                     return 0;
