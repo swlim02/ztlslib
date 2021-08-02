@@ -356,7 +356,7 @@ static int state_machine(SSL *s, int server)
             /*
              * Implement
              */
-            printf("st->state 초기값이 MSG_FLOW_UNINITED\n");
+            printf("st->state : MSG_FLOW_UNINITED\n");
             st->hand_state = TLS_ST_BEFORE;
             st->request_state = TLS_ST_BEFORE;
         }else{
@@ -392,7 +392,7 @@ static int state_machine(SSL *s, int server)
             /*
              * Implement
              */
-            printf("!SSL_IS_DTLS.\n");
+//            printf("!SSL_IS_DTLS.\n");
             if ((s->version >> 8) != SSL3_VERSION_MAJOR) {
                 SSLfatal(s, SSL_AD_NO_ALERT, ERR_R_INTERNAL_ERROR);
                 goto end;
@@ -405,7 +405,7 @@ static int state_machine(SSL *s, int server)
         }
 
         if (s->init_buf == NULL) {
-            printf("INIT buffer is empty.\n");
+//            printf("INIT buffer is empty.\n");
             if ((buf = BUF_MEM_new()) == NULL) {
                 SSLfatal(s, SSL_AD_NO_ALERT, ERR_R_INTERNAL_ERROR);
                 goto end;
@@ -454,7 +454,7 @@ static int state_machine(SSL *s, int server)
 
         st->state = MSG_FLOW_WRITING;
         init_write_state_machine(s);
-        printf("st->state = MSG_FLOW_WRITING.\n");
+        printf("st->state : MSG_FLOW_WRITING.\n");
     }
 
     while (st->state != MSG_FLOW_FINISHED) {
@@ -462,10 +462,11 @@ static int state_machine(SSL *s, int server)
             /*
              * Implement 2
              */
-            printf("st->state is MSG_FLOW_READING.\n");
+//            printf("st->state is MSG_FLOW_READING.\n");
             ssret = read_state_machine(s); // 이걸로 SERVER HELLO 읽어서 SERVER HANDSHAKE TRAFFIC SECRET 생성;
             if (ssret == SUB_STATE_FINISHED) {
                 printf("ssret is SUB_STATE_FINISHED.\n");
+                printf("st->state : MSG_FLOW_WRITING.\n");
                 st->state = MSG_FLOW_WRITING;
                 init_write_state_machine(s);
             } else {
@@ -477,14 +478,15 @@ static int state_machine(SSL *s, int server)
             /*
              * Implement 1 3
              */
-            printf("st->state is MSG_FLOW_WRITING.\n");
+//            printf("st->state is MSG_FLOW_WRITING.\n");
             ssret = write_state_machine(s); // 3 CLIENT HANDSHAKE TRAFFIC SECRET 생성;
             if (ssret == SUB_STATE_FINISHED) {
                 /*
              * Implement 1
              */
-                printf("ssret is SUB_STATE_FINISHED.\n");
+//                printf("ssret is SUB_STATE_FINISHED.\n");
                 st->state = MSG_FLOW_READING;
+                printf("st->state : MSG_FLOW_READING.\n");
                 init_read_state_machine(s);
             } else if (ssret == SUB_STATE_END_HANDSHAKE) {
                 /*
@@ -494,7 +496,7 @@ static int state_machine(SSL *s, int server)
                 st->state = MSG_FLOW_FINISHED;
             } else {
                 /* NBIO or error */
-                printf("ssret is not SUB_STATE_FINISHED or SUB_STATE_END_HANDSHAKE.\n");
+//                printf("ssret is not SUB_STATE_FINISHED or SUB_STATE_END_HANDSHAKE.\n");
                 goto end;
             }
         } else {
@@ -618,7 +620,7 @@ static SUB_STATE_RETURN read_state_machine(SSL *s)
     while (1) {
         switch (st->read_state) {
         case READ_STATE_HEADER:
-            printf("READ_STATE_HEADER in read_state_machine func\n");
+//            printf("READ_STATE_HEADER in read_state_machine func\n");
             /* Get the state the peer wants to move to */
             if (SSL_IS_DTLS(s)) {
                 /*
@@ -626,7 +628,7 @@ static SUB_STATE_RETURN read_state_machine(SSL *s)
                  */
                 ret = dtls_get_message(s, &mt);
             } else {
-                printf("    read message header in read_state_machine func\n");
+//                printf("    read message header in read_state_machine func\n");
                 ret = tls_get_message_header(s, &mt);
             }
 
@@ -668,7 +670,7 @@ static SUB_STATE_RETURN read_state_machine(SSL *s)
             /* Fall through */
 
         case READ_STATE_BODY:
-            printf("READ_STATE_BODY in read_state_machine func\n");
+//            printf("READ_STATE_BODY in read_state_machine func\n");
             if (SSL_IS_DTLS(s)) {
                 /*
                  * Actually we already have the body, but we give DTLS the
@@ -676,7 +678,7 @@ static SUB_STATE_RETURN read_state_machine(SSL *s)
                  */
                 ret = dtls_get_message_body(s, &len);
             } else {
-                printf("    read message body in read_state_machine func\n");
+//                printf("    read message body in read_state_machine func\n");
                 ret = tls_get_message_body(s, &len);
             }
             if (ret == 0) {
@@ -700,27 +702,27 @@ static SUB_STATE_RETURN read_state_machine(SSL *s)
                 return SUB_STATE_ERROR;
 
             case MSG_PROCESS_FINISHED_READING:
-                printf("    MSG_PROCESS_FINISHED_READING in read_state_machine func\n");
+//                printf("    MSG_PROCESS_FINISHED_READING in read_state_machine func\n");
                 if (SSL_IS_DTLS(s)) {
                     dtls1_stop_timer(s);
                 }
                 return SUB_STATE_FINISHED;
 
             case MSG_PROCESS_CONTINUE_PROCESSING:
-                printf("    MSG_PROCESS_CONTINUE_PROCESSING in read_state_machine func\n");
+//                printf("    MSG_PROCESS_CONTINUE_PROCESSING in read_state_machine func\n");
                 st->read_state = READ_STATE_POST_PROCESS;
                 st->read_state_work = WORK_MORE_A;
                 break;
 
             default:
-                printf("    default in read_state_machine func\n");
+//                printf("    default in read_state_machine func\n");
                 st->read_state = READ_STATE_HEADER;
                 break;
             }
             break;
 
         case READ_STATE_POST_PROCESS:
-            printf("READ_STATE_POST_PROCESS in read_state_machine func\n");
+//            printf("READ_STATE_POST_PROCESS in read_state_machine func\n");
             st->read_state_work = post_process_message(s, st->read_state_work);
             switch (st->read_state_work) {
             case WORK_ERROR:
@@ -732,12 +734,12 @@ static SUB_STATE_RETURN read_state_machine(SSL *s)
                 return SUB_STATE_ERROR;
 
             case WORK_FINISHED_CONTINUE:
-                printf("    WORK_FINISHED_CONTINUE in read_state_machine func\n");
+//                printf("    WORK_FINISHED_CONTINUE in read_state_machine func\n");
                 st->read_state = READ_STATE_HEADER;
                 break;
 
             case WORK_FINISHED_STOP:
-                printf("    WORK_FINISHED_STOP in read_state_machine func\n");
+//                printf("    WORK_FINISHED_STOP in read_state_machine func\n");
                 if (SSL_IS_DTLS(s)) {
                     dtls1_stop_timer(s);
                 }
@@ -850,7 +852,7 @@ static SUB_STATE_RETURN write_state_machine(SSL *s)
     while (1) {
         switch (st->write_state) {
         case WRITE_STATE_TRANSITION:
-            printf("WRITE_STATE_TRANSITION in write_state_machine func \n");
+//            printf("WRITE_STATE_TRANSITION in write_state_machine func \n");
             if (cb != NULL) {
                 /* Notify callback of an impending state change */
                 if (s->server)
@@ -860,13 +862,13 @@ static SUB_STATE_RETURN write_state_machine(SSL *s)
             }
             switch (transition(s)) {
             case WRITE_TRAN_CONTINUE:
-                printf("transition(s) is WRITE_TRAN_CONTINUE in write_state_machine func \n");
+//                printf("transition(s) is WRITE_TRAN_CONTINUE in write_state_machine func \n");
                 st->write_state = WRITE_STATE_PRE_WORK;
                 st->write_state_work = WORK_MORE_A;
                 break;
 
             case WRITE_TRAN_FINISHED:
-                printf("transition(s) is WRITE_TRAN_FINISHED in write_state_machine func \n");
+//                printf("transition(s) is WRITE_TRAN_FINISHED in write_state_machine func \n");
                 return SUB_STATE_FINISHED;
                 break;
 
@@ -877,7 +879,7 @@ static SUB_STATE_RETURN write_state_machine(SSL *s)
             break;
 
         case WRITE_STATE_PRE_WORK:
-            printf("WRITE_STATE_PRE_WORK in write_state_machine func \n");
+//            printf("WRITE_STATE_PRE_WORK in write_state_machine func \n");
             switch (st->write_state_work = pre_work(s, st->write_state_work)) {
             case WORK_ERROR:
                 check_fatal(s);
@@ -888,7 +890,7 @@ static SUB_STATE_RETURN write_state_machine(SSL *s)
                 return SUB_STATE_ERROR;
 
             case WORK_FINISHED_CONTINUE:
-                printf("WRITE_FINISHED_CONTINUE in write_state_machine func \n");
+//                printf("WRITE_FINISHED_CONTINUE in write_state_machine func \n");
                 st->write_state = WRITE_STATE_SEND;
                 break;
 
@@ -926,7 +928,7 @@ static SUB_STATE_RETURN write_state_machine(SSL *s)
             /* Fall through */
 
         case WRITE_STATE_SEND:
-            printf("WRITE_STATE_SEND in write_state_machine func \n");
+//            printf("WRITE_STATE_SEND in write_state_machine func \n");
             if (SSL_IS_DTLS(s) && st->use_timer) {
                 dtls1_start_timer(s);
             }
@@ -939,7 +941,7 @@ static SUB_STATE_RETURN write_state_machine(SSL *s)
             /* Fall through */
 
         case WRITE_STATE_POST_WORK:
-            printf("WRITE_STATE_POST_WORK in write_state_machine func \n");
+//            printf("WRITE_STATE_POST_WORK in write_state_machine func \n");
             switch (st->write_state_work = post_work(s, st->write_state_work)) {
             case WORK_ERROR:
                 check_fatal(s);
@@ -950,7 +952,7 @@ static SUB_STATE_RETURN write_state_machine(SSL *s)
                 return SUB_STATE_ERROR;
 
             case WORK_FINISHED_CONTINUE:
-                printf("WRITE_FINSIHED_CONTINUE in write_state_machine func \n");
+//                printf("WRITE_FINSIHED_CONTINUE in write_state_machine func \n");
                 st->write_state = WRITE_STATE_TRANSITION;
                 break;
 

@@ -503,7 +503,7 @@ WRITE_TRAN ossl_statem_client_write_transition(SSL *s)
      * later
      */
     if (SSL_IS_TLS13(s)) {
-        printf("    SSL_IS_TLS13\n");
+//        printf("    SSL_IS_TLS13\n");
         return ossl_statem_client13_write_transition(s);
     }
     switch (st->hand_state) {

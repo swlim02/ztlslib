@@ -1279,6 +1279,7 @@ int tls_get_message_body(SSL *s, size_t *len)
     p = s->init_msg;
     n = s->s3.tmp.message_size - s->init_num;
     while (n > 0) {
+        printf("    (tls_get_message_body) ssl_read_bytes\n");
         i = s->method->ssl_read_bytes(s, SSL3_RT_HANDSHAKE, NULL,
                                       &p[s->init_num], n, 0, &readbytes);
         if (i <= 0) {
