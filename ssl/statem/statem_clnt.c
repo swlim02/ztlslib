@@ -525,6 +525,7 @@ WRITE_TRAN ossl_statem_client_write_transition(SSL *s)
     case TLS_ST_BEFORE:
         printf("    st->hand_state is TLS_ST_CW_CLNT_HELLO\n");
         st->hand_state = TLS_ST_CW_CLNT_HELLO;
+//        st->hand_state = TLS_ST_CR_SRVR_HELLO;
         return WRITE_TRAN_CONTINUE;
 
     case TLS_ST_CW_CLNT_HELLO:

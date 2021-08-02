@@ -765,12 +765,14 @@ static int statem_do_write(SSL *s)
         if (SSL_IS_DTLS(s))
             return dtls1_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
         else{
-            printf("            ssl3_do_write\n");
+            printf("            ssl3_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC)\n");
             return ssl3_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
         }
 
     } else {
-        printf("            method->ssl_enc->do_write\n");
+        // ssl3_do_write(s, SSL3_RT_HANDSHAKE);
+        printf("            ssl3_do_write(s, SSL3_RT_HANDSHAKE)\n");
+//        return ssl3_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
         return ssl_do_write(s);
     }
 }
