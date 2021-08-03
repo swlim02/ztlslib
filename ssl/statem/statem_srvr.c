@@ -2456,6 +2456,7 @@ int tls_construct_server_key_exchange(SSL *s, WPACKET *pkt)
         EVP_PKEY *pkdhp = NULL;
 
         if (s->cert->dh_tmp_auto) {
+            printf("    (tls_construct_server_key_exchange) pkdh\n");
             pkdh = ssl_get_auto_dh(s);
             if (pkdh == NULL) {
                 SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
@@ -2467,6 +2468,7 @@ int tls_construct_server_key_exchange(SSL *s, WPACKET *pkt)
         }
 #if !defined(OPENSSL_NO_DEPRECATED_3_0)
         if ((pkdhp == NULL) && (s->cert->dh_tmp_cb != NULL)) {
+            printf("    (tls_construct_server_key_exchange) pkdh2\n");
             pkdh = ssl_dh_to_pkey(s->cert->dh_tmp_cb(s, 0, 1024));
             if (pkdh == NULL) {
                 SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
@@ -2488,7 +2490,7 @@ int tls_construct_server_key_exchange(SSL *s, WPACKET *pkt)
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
             goto err;
         }
-
+        printf("    (tls_construct_server_key_exchange) generate pkey\n");
         s->s3.tmp.pkey = ssl_generate_pkey(s, pkdhp);
         if (s->s3.tmp.pkey == NULL) {
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);

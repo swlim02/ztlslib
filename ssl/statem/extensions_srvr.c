@@ -1582,7 +1582,7 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
 #ifndef OPENSSL_NO_TLS1_3
     unsigned char *encodedPoint;
     size_t encoded_pt_len = 0;
-    EVP_PKEY *ckey = s->s3.peer_tmp, *skey = NULL;
+    EVP_PKEY *ckey = s->s3.peer_tmp, *skey = NULL, *skey1 = NULL;
     const TLS_GROUP_INFO *ginf = NULL;
 
     if (s->hello_retry_request == SSL_HRR_PENDING) {
@@ -1632,8 +1632,22 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
     if (!ginf->is_kem) {
         /* Regular KEX */
         printf("    Regular KEX mode\n");
+//        ckey = EVP_PKEY_new();
+//        skey = ssl_generate_pkey(s, ssl_generate_param_group(s, s->s3.group_id));
+//        skey1 = ssl_generate_pkey(s, ssl_generate_param_group(s, s->s3.group_id));
+
         skey = ssl_generate_pkey(s, ckey);
+//        skey1 = ssl_generate_pkey(s, ckey);
+
+//        skey = ssl_generate_pkey_group(s, s->s3.group_id);
+//        skey1 = ssl_generate_pkey_group(s, s->s3.group_id);
+//        if(skey == skey1){
+//            printf(" same\n");
+//        }else{
+//            printf(" different\n");
+//        }
         if (skey == NULL) {
+            printf("?\n");
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
             return EXT_RETURN_FAIL;
         }
@@ -1641,6 +1655,7 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
         /* Generate encoding of server key */
         encoded_pt_len = EVP_PKEY_get1_encoded_public_key(skey, &encodedPoint);
         if (encoded_pt_len == 0) {
+            printf(" ENCOEDE_LEN 0\n");
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EC_LIB);
             EVP_PKEY_free(skey);
             return EXT_RETURN_FAIL;

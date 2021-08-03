@@ -597,6 +597,7 @@ static int add_key_share(SSL *s, WPACKET *pkt, unsigned int curve_id)
     size_t encodedlen;
 
     if (s->s3.tmp.pkey != NULL) {
+        // NOT
         if (!ossl_assert(s->hello_retry_request == SSL_HRR_PENDING)) {
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
             return 0;
@@ -606,6 +607,7 @@ static int add_key_share(SSL *s, WPACKET *pkt, unsigned int curve_id)
          */
         key_share_key = s->s3.tmp.pkey;
     } else {
+        // IMPLEMENT
         key_share_key = ssl_generate_pkey_group(s, curve_id);
         if (key_share_key == NULL) {
             /* SSLfatal() already called */
@@ -639,6 +641,64 @@ static int add_key_share(SSL *s, WPACKET *pkt, unsigned int curve_id)
 
     return 1;
  err:
+    if (s->s3.tmp.pkey == NULL)
+        EVP_PKEY_free(key_share_key);
+    OPENSSL_free(encoded_point);
+    return 0;
+}
+#endif
+#ifndef OPENSSL_NO_TLS1_3
+static int add_key_share_reduce(SSL *s, WPACKET *pkt, unsigned int curve_id)
+{
+    unsigned char *encoded_point = NULL;
+    EVP_PKEY *key_share_key = NULL;
+    size_t encodedlen;
+
+    if (s->s3.tmp.pkey != NULL) {
+        // NOT
+        if (!ossl_assert(s->hello_retry_request == SSL_HRR_PENDING)) {
+            SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+            return 0;
+        }
+        /*
+         * Could happen if we got an HRR that wasn't requesting a new key_share
+         */
+        key_share_key = s->s3.tmp.pkey;
+    } else {
+        // IMPLEMENT
+        key_share_key = ssl_generate_pkey_group(s, curve_id);
+        if (key_share_key == NULL) {
+            /* SSLfatal() already called */
+            return 0;
+        }
+    }
+
+    /* Encode the public key. */
+    encodedlen = EVP_PKEY_get1_encoded_public_key(key_share_key,
+                                                  &encoded_point);
+    if (encodedlen == 0) {
+        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EC_LIB);
+        goto err;
+    }
+
+    /* Create KeyShareEntry */
+    if (!WPACKET_put_bytes_u16(pkt, curve_id)
+    || !WPACKET_sub_memcpy_u16(pkt, encoded_point, encodedlen)) {
+        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+        goto err;
+    }
+
+    /*
+     * When changing to send more than one key_share we're
+     * going to need to be able to save more than one EVP_PKEY. For now
+     * we reuse the existing tmp.pkey
+     */
+    s->s3.tmp.pkey = key_share_key;
+    s->s3.group_id = curve_id;
+    OPENSSL_free(encoded_point);
+
+    return 1;
+    err:
     if (s->s3.tmp.pkey == NULL)
         EVP_PKEY_free(key_share_key);
     OPENSSL_free(encoded_point);
@@ -689,7 +749,7 @@ EXT_RETURN tls_construct_ctos_key_share(SSL *s, WPACKET *pkt,
         return EXT_RETURN_FAIL;
     }
 
-    if (!add_key_share(s, pkt, curve_id)) {
+    if (!add_key_share_reduce(s, pkt, curve_id)) {
         /* SSLfatal() already called */
         return EXT_RETURN_FAIL;
     }
@@ -1748,6 +1808,7 @@ int tls_parse_stoc_key_share(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
     }
 
     if ((context & SSL_EXT_TLS1_3_HELLO_RETRY_REQUEST) != 0) {
+        // NOT
         const uint16_t *pgroups = NULL;
         size_t i, num_groups;
 
@@ -1784,6 +1845,7 @@ int tls_parse_stoc_key_share(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
     }
 
     if (group_id != s->s3.group_id) {
+        // NOT
         /*
          * This isn't for the group that we sent in the original
          * key_share!
@@ -1793,8 +1855,10 @@ int tls_parse_stoc_key_share(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
     }
     /* Retain this group in the SSL_SESSION */
     if (!s->hit) {
+        // IMPLEMENT
         s->session->kex_group = group_id;
     } else if (group_id != s->session->kex_group) {
+        // NOT
         /*
          * If this is a resumption but changed what group was used, we need
          * to record the new group in the session, but the session is not
@@ -1827,6 +1891,7 @@ int tls_parse_stoc_key_share(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
 
     if (!ginf->is_kem) {
         /* Regular KEX */
+        // IMPLEMENT
         skey = EVP_PKEY_new();
         if (skey == NULL || EVP_PKEY_copy_parameters(skey, ckey) <= 0) {
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_COPY_PARAMETERS_FAILED);
@@ -1847,6 +1912,7 @@ int tls_parse_stoc_key_share(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
         }
         s->s3.peer_tmp = skey;
     } else {
+        // NOT
         /* KEM Mode */
         const unsigned char *ct = PACKET_data(&encoded_pt);
         size_t ctlen = PACKET_remaining(&encoded_pt);

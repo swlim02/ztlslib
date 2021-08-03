@@ -1394,24 +1394,29 @@ size_t EVP_PKEY_get1_encoded_public_key(EVP_PKEY *pkey, unsigned char **ppub)
         EVP_PKEY_get_octet_string_param(pkey,
                                         OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
                                         NULL, 0, &return_size);
-        if (return_size == OSSL_PARAM_UNMODIFIED)
+        if (return_size == OSSL_PARAM_UNMODIFIED){
+            // problem
             return 0;
-
+        }
         *ppub = OPENSSL_malloc(return_size);
-        if (*ppub == NULL)
+        if (*ppub == NULL){
             return 0;
+        }
 
         if (!EVP_PKEY_get_octet_string_param(pkey,
                                              OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
-                                             *ppub, return_size, NULL))
+                                             *ppub, return_size, NULL)){
             return 0;
+        }
         return return_size;
     }
 
 
     rv = evp_pkey_asn1_ctrl(pkey, ASN1_PKEY_CTRL_GET1_TLS_ENCPT, 0, ppub);
-    if (rv <= 0)
+    if (rv <= 0){
+        printf("reason 4\n");
         return 0;
+    }
     return rv;
 }
 

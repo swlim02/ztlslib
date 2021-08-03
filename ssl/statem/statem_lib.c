@@ -63,7 +63,7 @@ int ssl3_do_write(SSL *s, int type)
                                  written))
                 return -1;
     if (written == s->init_num) {
-        printf("        written == s->init_num\n");
+//        printf("        written == s->init_num\n");
         if (s->msg_callback)
             s->msg_callback(1, s->version, type, s->init_buf->data,
                             (size_t)(s->init_off + s->init_num), s,
@@ -1290,6 +1290,7 @@ int tls_get_message_body(SSL *s, size_t *len)
         s->init_num += readbytes;
         n -= readbytes;
     }
+    printf("    (tls_get_message_body) hand_state -> %s\n", SSL_state_string_long(s));
 
     /*
      * If receiving Finished, record MAC of prior handshake messages for
@@ -1302,7 +1303,7 @@ int tls_get_message_body(SSL *s, size_t *len)
     }
 
     /* Feed this message into MAC computation. */
-    if (RECORD_LAYER_is_sslv2_record(&s->rlayer)) {
+    if (RECORD_LAYER_is_sslv2_record(&s->rlayer)) { // NO Implement
         if (!ssl3_finish_mac(s, (unsigned char *)s->init_buf->data,
                              s->init_num)) {
             /* SSLfatal() already called */
@@ -1315,7 +1316,7 @@ int tls_get_message_body(SSL *s, size_t *len)
         }
 
     } else { // Implement
-        printf("    (tls_get_message_body) 2-2\n");
+//        printf("    (tls_get_message_body) 2-2\n");
         /*
          * We defer feeding in the HRR until later. We'll do it as part of
          * processing the message

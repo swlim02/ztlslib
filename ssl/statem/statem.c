@@ -928,6 +928,7 @@ static SUB_STATE_RETURN write_state_machine(SSL *s)
             /* Fall through */
 
         case WRITE_STATE_SEND:
+            printf("    (write_state_machine) hand_state -> %s\n", SSL_state_string_long(s));
 //            printf("WRITE_STATE_SEND in write_state_machine func \n");
             if (SSL_IS_DTLS(s) && st->use_timer) {
                 dtls1_start_timer(s);

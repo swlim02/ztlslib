@@ -1379,6 +1379,7 @@ static int set_client_ciphersuite(SSL *s, const unsigned char *cipherchars)
 
 MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
 {
+    printf("        (tls_process_server_hello) start\n");
     PACKET session_id, extpkt;
     size_t session_id_len;
     const unsigned char *cipherchars;
@@ -1401,6 +1402,7 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
             && sversion == TLS1_2_VERSION
             && PACKET_remaining(pkt) >= SSL3_RANDOM_SIZE
             && memcmp(hrrrandom, PACKET_data(pkt), SSL3_RANDOM_SIZE) == 0) {
+        // NOT
         s->hello_retry_request = SSL_HRR_PENDING;
         hrr = 1;
         if (!PACKET_forward(pkt, SSL3_RANDOM_SIZE)) {
@@ -1408,6 +1410,7 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
             goto err;
         }
     } else {
+        // IMPLEMENT
         if (!PACKET_copy_bytes(pkt, s->s3.server_random, SSL3_RANDOM_SIZE)) {
             SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
             goto err;
@@ -1438,6 +1441,7 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
 
     /* TLS extensions */
     if (PACKET_remaining(pkt) == 0 && !hrr) {
+        // NOT
         PACKET_null_init(&extpkt);
     } else if (!PACKET_as_length_prefixed_2(pkt, &extpkt)
                || PACKET_remaining(pkt) != 0) {
@@ -1446,6 +1450,7 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
     }
 
     if (!hrr) {
+        // IMPLEMENT
         if (!tls_collect_extensions(s, &extpkt,
                                     SSL_EXT_TLS1_2_SERVER_HELLO
                                     | SSL_EXT_TLS1_3_SERVER_HELLO,
@@ -1454,13 +1459,14 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
             goto err;
         }
 
-        if (!ssl_choose_client_version(s, sversion, extensions)) {
+        if (!ssl_choose_client_version(s, sversion, extensions)) { // check supported version
             /* SSLfatal() already called */
             goto err;
         }
     }
 
     if (SSL_IS_TLS13(s) || hrr) {
+        // IMPLEMENT
         if (compression != 0) {
             SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER,
                      SSL_R_INVALID_COMPRESSION_ALGORITHM);
@@ -1476,6 +1482,7 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
     }
 
     if (hrr) {
+        // NOT
         if (!set_client_ciphersuite(s, cipherchars)) {
             /* SSLfatal() already called */
             goto err;
@@ -1498,6 +1505,7 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
     s->hit = 0;
 
     if (SSL_IS_TLS13(s)) {
+        // IMPLEMENT
         /*
          * In TLSv1.3 a ServerHello message signals a key change so the end of
          * the message must be on a record boundary.
@@ -1507,7 +1515,8 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
                      SSL_R_NOT_ON_RECORD_BOUNDARY);
             goto err;
         }
-
+//        printf("(tls_process_server_hello) check 1\n");
+// no psk
         /* This will set s->hit if we are resuming */
         if (!tls_parse_extension(s, TLSEXT_IDX_psk,
                                  SSL_EXT_TLS1_3_SERVER_HELLO,
@@ -1515,7 +1524,9 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
             /* SSLfatal() already called */
             goto err;
         }
+//        printf("(tls_process_server_hello) check 2\n");
     } else {
+        // NOT
         /*
          * Check if we can resume the session based on external pre-shared
          * secret. EAP-FAST (RFC 4851) supports two types of session resumption.
@@ -1559,6 +1570,7 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
     }
 
     if (s->hit) {
+        // NOT
         if (s->sid_ctx_length != s->session->sid_ctx_length
                 || memcmp(s->session->sid_ctx, s->sid_ctx, s->sid_ctx_length)) {
             /* actually a client application bug */
@@ -1567,6 +1579,7 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
             goto err;
         }
     } else {
+        // IMPLEMENT
         /*
          * If we were trying for session-id reuse but the server
          * didn't resume, make a new SSL_SESSION.
@@ -1575,6 +1588,7 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
          * overwritten if the server refuses resumption.
          */
         if (s->session->session_id_length > 0) {
+            // NOT
             tsan_counter(&s->session_ctx->stats.sess_miss);
             if (!ssl_get_new_session(s, 0)) {
                 /* SSLfatal() already called */
@@ -1590,6 +1604,7 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
          * used for resumption.
          */
         if (!SSL_IS_TLS13(s)) {
+            // NOT
             s->session->session_id_length = session_id_len;
             /* session_id_len could be 0 */
             if (session_id_len > 0)
@@ -1653,11 +1668,13 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt)
         s->s3.tmp.new_compression = comp;
     }
 #endif
-
+//    printf("(tls_process_server_hello) check 1\n");
+    // parse keyshare
     if (!tls_parse_all_extensions(s, context, extensions, NULL, 0, 1)) {
         /* SSLfatal() already called */
         goto err;
     }
+//    printf("(tls_process_server_hello) check 1\n");
 
 #ifndef OPENSSL_NO_SCTP
     if (SSL_IS_DTLS(s) && s->hit) {

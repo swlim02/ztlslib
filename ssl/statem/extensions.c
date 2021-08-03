@@ -422,8 +422,10 @@ int tls_validate_all_contexts(SSL *s, unsigned int thisctx, RAW_EXTENSION *exts)
             continue;
 
         if (i < builtin_num) {
+            // IMPLEMENT
             context = ext_defs[i].context;
         } else {
+            // NOT
             custom_ext_method *meth = NULL;
 
             meth = custom_ext_find(&s->cert->custext, role, thisext->type,
@@ -691,7 +693,7 @@ int tls_parse_extension(SSL *s, TLSEXT_INDEX idx, int context,
         return 1;
 
     currext->parsed = 1;
-
+    printf("    (tls_parse_extension) current idx : %d\n", idx);
     if (idx < OSSL_NELEM(ext_defs)) {
         /* We are handling a built-in extension */
         const EXTENSION_DEFINITION *extdef = &ext_defs[idx];
@@ -701,17 +703,19 @@ int tls_parse_extension(SSL *s, TLSEXT_INDEX idx, int context,
             return 1;
 
         parser = s->server ? extdef->parse_ctos : extdef->parse_stoc;
-
-        if (parser != NULL)
+        printf("        (tls_parse_extension) idx : %d\n", idx);
+        printf("        (tls_parse_extension) type : %d\n", extdef->type);
+        if (parser != NULL){
+            printf("    (tls_parse_extension) call\n");
             return parser(s, &currext->data, context, x, chainidx);
-
+        }
         /*
          * If the parser is NULL we fall through to the custom extension
          * processing
          */
     }
-
     /* Parse custom extensions */
+    printf("    (tls_parse_extension) end\n");
     return custom_ext_parse(s, context, currext->type,
                             PACKET_data(&currext->data),
                             PACKET_remaining(&currext->data),

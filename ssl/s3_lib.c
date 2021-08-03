@@ -4649,8 +4649,10 @@ EVP_PKEY *ssl_generate_pkey(SSL *s, EVP_PKEY *pm)
     EVP_PKEY_CTX *pctx = NULL;
     EVP_PKEY *pkey = NULL;
 
-    if (pm == NULL)
+    if (pm == NULL){
         return NULL;
+    }
+
     pctx = EVP_PKEY_CTX_new_from_pkey(s->ctx->libctx, pm, s->ctx->propq);
     if (pctx == NULL)
         goto err;
