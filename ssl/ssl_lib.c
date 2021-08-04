@@ -3868,10 +3868,20 @@ int SSL_do_handshake(SSL *s)
 {
     int ret = 1;
 
+    int dns = 1;
+
+
+    if(dns){
+        return SSL_do_handshake_reduce(s);
+    }
+
+
     if (s->handshake_func == NULL) {
         ERR_raise(ERR_LIB_SSL, SSL_R_CONNECTION_TYPE_NOT_SET);
         return -1;
     }
+
+
 
     ossl_statem_check_finish_init(s, -1);
 
@@ -3892,6 +3902,7 @@ int SSL_do_handshake(SSL *s)
 }
 int SSL_do_handshake_reduce(SSL *s)
 {
+    printf("start do handshake reduce\n");
     int ret = 1;
 
     if (s->handshake_func == NULL) {
@@ -3904,6 +3915,8 @@ int SSL_do_handshake_reduce(SSL *s)
     s->method->ssl_renegotiate_check(s, 0);
 
     if (SSL_in_init(s) || SSL_in_before(s)) {
+        if(s->server)   s->handshake_func = ossl_statem_accept_reduce;
+        else    s->handshake_func = ossl_statem_connect_reduce;
         ret = s->handshake_func(s);
     }
     return ret;

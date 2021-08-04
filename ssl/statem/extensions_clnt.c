@@ -1924,7 +1924,6 @@ int tls_parse_stoc_key_share(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
             printf("error5\n");
         }
         BIO_free(bp);
-
         if (ssl_derive(s, ckey, skey, 1) == 0) {
             /* SSLfatal() already called */
             EVP_PKEY_free(skey);

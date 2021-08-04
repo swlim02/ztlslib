@@ -130,6 +130,8 @@ typedef struct ossl_statem_st OSSL_STATEM;
 
 __owur int ossl_statem_accept(SSL *s);
 __owur int ossl_statem_connect(SSL *s);
+__owur int ossl_statem_connect_reduce(SSL *s);
+__owur int ossl_statem_accept_reduce(SSL *s);
 void ossl_statem_clear(SSL *s);
 void ossl_statem_set_renegotiate(SSL *s);
 void ossl_statem_send_fatal(SSL *s, int al);

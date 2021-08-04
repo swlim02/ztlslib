@@ -2109,6 +2109,8 @@ typedef struct ssl3_enc_method {
         s->method->ssl3_enc->close_construct_packet((s), (pkt), (htype))
 # define ssl_do_write(s)  s->method->ssl3_enc->do_write(s)
 
+int SSL_do_handshake(SSL *s);
+int SSL_do_handshake_reduce(SSL *s);
 /* Values for enc_flags */
 
 /* Uses explicit IV for CBC mode */
