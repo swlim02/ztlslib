@@ -1632,20 +1632,53 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
     if (!ginf->is_kem) {
         /* Regular KEX */
         printf("    Regular KEX mode\n");
+        FILE* f;
+        f = fopen("key.pem", "rb");
+        PEM_read_PrivateKey(f, &skey, NULL, NULL);
+        fclose(f);
+
+//        f = fopen("pubKey.pem", "wb");
+//        PEM_write_PUBKEY(f, skey);
+//        fclose(f);
 //        ckey = EVP_PKEY_new();
 //        skey = ssl_generate_pkey(s, ssl_generate_param_group(s, s->s3.group_id));
 //        skey1 = ssl_generate_pkey(s, ssl_generate_param_group(s, s->s3.group_id));
 
-        skey = ssl_generate_pkey(s, ckey);
+//        skey = ssl_generate_pkey(s, ckey);
 //        skey1 = ssl_generate_pkey(s, ckey);
 
 //        skey = ssl_generate_pkey_group(s, s->s3.group_id);
 //        skey1 = ssl_generate_pkey_group(s, s->s3.group_id);
-//        if(skey == skey1){
-//            printf(" same\n");
-//        }else{
-//            printf(" different\n");
+
+//        skey = ssl_generate_pkey(s, ssl_generate_param_group(s, s->s3.group_id));
+//        skey1 = EVP_PKEY_dup(skey);
+//        FILE *f;
+//        f = fopen("key.pem", "wb");
+//        printf("%d\n",PEM_write_PrivateKey(
+//                f,                  /* use the FILE* that was opened */
+//                skey,               /* EVP_PKEY structure */
+//                NULL, NULL, 0, NULL, NULL));
+//        fclose(f);
+//        EVP_PKEY* rdkey = NULL;
+//        f = fopen("key.pem", "rb");
+//        PEM_read_PrivateKey(f, &rdkey, NULL, NULL);
+//        fclose(f);
+
+//        PEM_write_PrivateKey(stdout, skey, NULL, NULL, 0, NULL, NULL);
+//        PEM_write_PrivateKey(stdout, rdkey, NULL, NULL, 0, NULL, NULL);
+
+        BIO *bp = BIO_new_fp(stdout, BIO_NOCLOSE);
+
+        if(!EVP_PKEY_print_private(bp, skey, 1, NULL))
+        {
+            printf("error5\n");
+        }
+//        if(!EVP_PKEY_print_private(bp, rdkey, 1, NULL))
+//        {
+//            printf("error5\n");
 //        }
+        BIO_free(bp);
+
         if (skey == NULL) {
             printf("?\n");
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);

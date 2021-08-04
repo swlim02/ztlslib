@@ -1892,18 +1892,38 @@ int tls_parse_stoc_key_share(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
     if (!ginf->is_kem) {
         /* Regular KEX */
         // IMPLEMENT
-        skey = EVP_PKEY_new();
-        if (skey == NULL || EVP_PKEY_copy_parameters(skey, ckey) <= 0) {
-            SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_COPY_PARAMETERS_FAILED);
-            return 0;
-        }
+//        skey = EVP_PKEY_new();
+//        if (skey == NULL || EVP_PKEY_copy_parameters(skey, ckey) <= 0) {
+//            SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_COPY_PARAMETERS_FAILED);
+//            return 0;
+//        }
+//
+//        if (EVP_PKEY_set1_encoded_public_key(skey, PACKET_data(&encoded_pt),
+//                                             PACKET_remaining(&encoded_pt)) <= 0) {
+//            SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER, SSL_R_BAD_ECPOINT);
+//            EVP_PKEY_free(skey);
+//            return 0;
+//        }
 
-        if (EVP_PKEY_set1_encoded_public_key(skey, PACKET_data(&encoded_pt),
-                                             PACKET_remaining(&encoded_pt)) <= 0) {
-            SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER, SSL_R_BAD_ECPOINT);
-            EVP_PKEY_free(skey);
-            return 0;
+//        BIO *bp = BIO_new_fp(stdout, BIO_NOCLOSE);
+//        if(!EVP_PKEY_print_public(bp, skey, 1, NULL))
+//        {
+//            printf("error5\n");
+//        }
+//        BIO_free(bp);
+
+        FILE* f;
+        f = fopen("pubKey.pem", "rb");
+        PEM_read_PUBKEY(f, &skey, NULL, NULL);
+
+        fclose(f);
+
+        BIO *bp = BIO_new_fp(stdout, BIO_NOCLOSE);
+        if(!EVP_PKEY_print_public(bp, skey, 1, NULL))
+        {
+            printf("error5\n");
         }
+        BIO_free(bp);
 
         if (ssl_derive(s, ckey, skey, 1) == 0) {
             /* SSLfatal() already called */
