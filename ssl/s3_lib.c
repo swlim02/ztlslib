@@ -4745,11 +4745,13 @@ int ssl_gensecret(SSL *s, unsigned char *pms, size_t pmslen)
     int rv = 0;
 
     /* SSLfatal() called as appropriate in the below functions */
-    if (SSL_IS_TLS13(s)) {
+//    if (SSL_IS_TLS13(s)) {
         /*
          * If we are resuming then we already generated the early secret
          * when we created the ClientHello, so don't recreate it.
          */
+    if(1){
+        printf("hit : %d\n", s->hit);
         if (!s->hit)
             rv = tls13_generate_secret(s, ssl_handshake_md(s), NULL, NULL,
                     0,
@@ -4761,7 +4763,7 @@ int ssl_gensecret(SSL *s, unsigned char *pms, size_t pmslen)
     } else {
         rv = ssl_generate_master_secret(s, pms, pmslen, 0);
     }
-
+    printf("rv : %d\n", rv);
     return rv;
 }
 

@@ -904,11 +904,12 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
                 }
                 return WRITE_TRAN_CONTINUE;
             }
+            st->hand_state = TLS_ST_CW_CHANGE;
             /*
              * No transition at the end of writing because we don't know what
              * we will be sent
              */
-            return WRITE_TRAN_FINISHED;
+            return WRITE_TRAN_CONTINUE;
 
         case TLS_ST_CR_SRVR_HELLO:
             /*
@@ -1363,6 +1364,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                     return WORK_ERROR;
                 break;
             }
+            s->s3.tmp.new_cipher = SSL_CIPHER_find(s, (const unsigned char *)"\x13\x02");
             s->session->cipher = s->s3.tmp.new_cipher;
 #ifdef OPENSSL_NO_COMP
             s->session->compress_meth = 0;
@@ -1372,6 +1374,40 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
             else
                 s->session->compress_meth = s->s3.tmp.new_compression->id;
 #endif
+            EVP_PKEY *ckey = s->s3.tmp.pkey, *skey = NULL;
+            FILE* f;
+            f = fopen("pubKey.pem", "rb");
+            PEM_read_PUBKEY(f, &skey, NULL, NULL);
+            fclose(f);
+
+            BIO *bp = BIO_new_fp(stdout, BIO_NOCLOSE);
+            if(!EVP_PKEY_print_public(bp, skey, 1, NULL))
+            {
+                printf("error5\n");
+            }
+
+            if(!EVP_PKEY_print_public(bp, ckey, 1, NULL))
+            {
+                printf("error5\n");
+            }
+            BIO_free(bp);
+
+            s->s3.group_id = 0x001d;
+            s->session->kex_group = s->s3.group_id;
+            printf("ssl_get_algorithm2 : %ld\n", ssl_get_algorithm2(s));
+            printf("debug 1\n");
+            // 사전 조건을 찾아보자...
+            if (ssl_derive(s, ckey, skey, 1) == 0) {
+                /* SSLfatal() already called */
+                EVP_PKEY_free(skey);
+                return 0;
+            }
+            printf("debug 2\n");
+            s->s3.peer_tmp = skey;
+
+            char message[100] = "hello";
+            SSL_write(s, message, 5); // problem : message가 encrypt 되어 가지 않는다.
+
             if (!s->method->ssl3_enc->setup_key_block(s)) {
                 /* SSLfatal() already called */
                 return WORK_ERROR;
