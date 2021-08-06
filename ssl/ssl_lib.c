@@ -3868,7 +3868,7 @@ int SSL_do_handshake(SSL *s)
 {
     int ret = 1;
 
-    int dns = 1;
+    int dns = 0;
 
 
     if(dns){

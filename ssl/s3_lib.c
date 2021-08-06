@@ -4751,7 +4751,7 @@ int ssl_gensecret(SSL *s, unsigned char *pms, size_t pmslen)
          * when we created the ClientHello, so don't recreate it.
          */
     if(1){
-        printf("hit : %d\n", s->hit);
+//        printf("hit : %d\n", s->hit);
         if (!s->hit)
             rv = tls13_generate_secret(s, ssl_handshake_md(s), NULL, NULL,
                     0,
@@ -4763,7 +4763,7 @@ int ssl_gensecret(SSL *s, unsigned char *pms, size_t pmslen)
     } else {
         rv = ssl_generate_master_secret(s, pms, pmslen, 0);
     }
-    printf("rv : %d\n", rv);
+//    printf("rv : %d\n", rv);
     return rv;
 }
 

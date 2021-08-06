@@ -913,6 +913,7 @@ static SUB_STATE_RETURN read_state_machine(SSL *s) {
                     SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
                     return SUB_STATE_ERROR;
                 }
+                printf("           before process message: %s\n",SSL_state_string_long(s));
                 ret = process_message(s, &pkt);
 
                 /* Discard the packet data */
@@ -924,27 +925,27 @@ static SUB_STATE_RETURN read_state_machine(SSL *s) {
                         return SUB_STATE_ERROR;
 
                     case MSG_PROCESS_FINISHED_READING:
-//                printf("    MSG_PROCESS_FINISHED_READING in read_state_machine func\n");
+                printf("    MSG_PROCESS_FINISHED_READING in read_state_machine func\n");
                         if (SSL_IS_DTLS(s)) {
                             dtls1_stop_timer(s);
                         }
                         return SUB_STATE_FINISHED;
 
                     case MSG_PROCESS_CONTINUE_PROCESSING:
-//                printf("    MSG_PROCESS_CONTINUE_PROCESSING in read_state_machine func\n");
+                printf("    MSG_PROCESS_CONTINUE_PROCESSING in read_state_machine func\n");
                         st->read_state = READ_STATE_POST_PROCESS;
                         st->read_state_work = WORK_MORE_A;
                         break;
 
                     default:
-//                printf("    default in read_state_machine func\n");
+                printf("    default in read_state_machine func\n");
                         st->read_state = READ_STATE_HEADER;
                         break;
                 }
                 break;
 
             case READ_STATE_POST_PROCESS:
-//            printf("READ_STATE_POST_PROCESS in read_state_machine func\n");
+                printf("READ_STATE_POST_PROCESS in read_state_machine func\n");
                 st->read_state_work = post_process_message(s, st->read_state_work);
                 switch (st->read_state_work) {
                     case WORK_ERROR:
@@ -992,9 +993,9 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
 
     if (s->server) {
         transition = ossl_statem_server_read_transition_reduce;
-        process_message = ossl_statem_server_process_message;
+        process_message = ossl_statem_server_process_message_reduce;
         max_message_size = ossl_statem_server_max_message_size;
-        post_process_message = ossl_statem_server_post_process_message;
+        post_process_message = ossl_statem_server_post_process_message_reduce;
     } else {
         transition = ossl_statem_client_read_transition_reduce;
         process_message = ossl_statem_client_process_message;
@@ -1060,7 +1061,7 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                 /* Fall through */
 
             case READ_STATE_BODY:
-                //            printf("READ_STATE_BODY in read_state_machine func\n");
+                            printf("READ_STATE_BODY in read_state_machine func\n");
                 if (SSL_IS_DTLS(s)) {
                     /*
                      * Actually we already have the body, but we give DTLS the
@@ -1081,6 +1082,7 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                     SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
                     return SUB_STATE_ERROR;
                 }
+                printf("           before process message: %s",SSL_state_string_long(s));
                 ret = process_message(s, &pkt);
 
                 /* Discard the packet data */
@@ -1400,13 +1402,13 @@ static SUB_STATE_RETURN write_state_machine_reduce(SSL *s) {
 
     cb = get_callback(s);
     if (s->server) {
-        printf("not using dns\n");
+        printf("using dns\n");
         transition = ossl_statem_server_write_transition_reduce;
         pre_work = ossl_statem_server_pre_work_reduce;
         post_work = ossl_statem_server_post_work_reduce;
         get_construct_message_f = ossl_statem_server_construct_message;
     } else if (!s->server) {
-        printf("not using dns\n");
+        printf("using dns\n");
         transition = ossl_statem_client_write_transition_reduce;
         pre_work = ossl_statem_client_pre_work_reduce;
         post_work = ossl_statem_client_post_work_reduce;

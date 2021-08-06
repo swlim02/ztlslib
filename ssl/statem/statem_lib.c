@@ -1166,10 +1166,13 @@ int tls_get_message_header(SSL *s, int *mt)
 
     do {
         while (s->init_num < SSL3_HM_HEADER_LENGTH) {
+            printf("start read header\n");
             i = s->method->ssl_read_bytes(s, SSL3_RT_HANDSHAKE, &recvd_type,
                                           &p[s->init_num],
                                           SSL3_HM_HEADER_LENGTH - s->init_num,
                                           0, &readbytes);
+            printf("end read header recvd_type : %d\n", recvd_type);
+
             if (i <= 0) {
                 s->rwstate = SSL_READING;
                 return 0;
@@ -1179,6 +1182,7 @@ int tls_get_message_header(SSL *s, int *mt)
                  * A ChangeCipherSpec must be a single byte and may not occur
                  * in the middle of a handshake message.
                  */
+                printf("recvd_type : CCS\n");
                 if (s->init_num != 0 || readbytes != 1 || p[0] != SSL3_MT_CCS) {
                     SSLfatal(s, SSL_AD_UNEXPECTED_MESSAGE,
                              SSL_R_BAD_CHANGE_CIPHER_SPEC);

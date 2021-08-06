@@ -1431,8 +1431,11 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
             return -1;
         }
 
-        if (recvd_type != NULL)
+        if (recvd_type != NULL){
+            printf("recvd_type NULL?\n");
             *recvd_type = SSL3_RECORD_get_type(rr);
+            printf("%d\n", *recvd_type);
+        }
 
         if (len == 0) {
             /*
