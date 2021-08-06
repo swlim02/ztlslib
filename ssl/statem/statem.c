@@ -63,31 +63,34 @@ typedef enum {
 } SUB_STATE_RETURN;
 
 static int state_machine(SSL *s, int server);
+
 static int state_machine_reduce(SSL *s, int server);
+
 static void init_read_state_machine(SSL *s);
+
 static SUB_STATE_RETURN read_state_machine(SSL *s);
+
 static SUB_STATE_RETURN read_state_machine_reduce(SSL *s);
+
 static void init_write_state_machine(SSL *s);
+
 static SUB_STATE_RETURN write_state_machine(SSL *s);
+
 static SUB_STATE_RETURN write_state_machine_reduce(SSL *s);
 
-OSSL_HANDSHAKE_STATE SSL_get_state(const SSL *ssl)
-{
+OSSL_HANDSHAKE_STATE SSL_get_state(const SSL *ssl) {
     return ssl->statem.hand_state;
 }
 
-int SSL_in_init(const SSL *s)
-{
+int SSL_in_init(const SSL *s) {
     return s->statem.in_init;
 }
 
-int SSL_is_init_finished(const SSL *s)
-{
+int SSL_is_init_finished(const SSL *s) {
     return !(s->statem.in_init) && (s->statem.hand_state == TLS_ST_OK);
 }
 
-int SSL_in_before(const SSL *s)
-{
+int SSL_in_before(const SSL *s) {
     /*
      * Historically being "in before" meant before anything had happened. In the
      * current code though we remain in the "before" state for a while after we
@@ -96,14 +99,13 @@ int SSL_in_before(const SSL *s)
      * and not started any handshake process yet.
      */
     return (s->statem.hand_state == TLS_ST_BEFORE)
-        && (s->statem.state == MSG_FLOW_UNINITED);
+           && (s->statem.state == MSG_FLOW_UNINITED);
 }
 
 /*
  * Clear the state machine state and reset back to MSG_FLOW_UNINITED
  */
-void ossl_statem_clear(SSL *s)
-{
+void ossl_statem_clear(SSL *s) {
     s->statem.state = MSG_FLOW_UNINITED;
     s->statem.hand_state = TLS_ST_BEFORE;
     s->statem.in_init = 1;
@@ -113,21 +115,19 @@ void ossl_statem_clear(SSL *s)
 /*
  * Set the state machine up ready for a renegotiation handshake
  */
-void ossl_statem_set_renegotiate(SSL *s)
-{
+void ossl_statem_set_renegotiate(SSL *s) {
     s->statem.in_init = 1;
     s->statem.request_state = TLS_ST_SW_HELLO_REQ;
 }
 
-void ossl_statem_send_fatal(SSL *s, int al)
-{
+void ossl_statem_send_fatal(SSL *s, int al) {
     /* We shouldn't call SSLfatal() twice. Once is enough */
     if (s->statem.in_init && s->statem.state == MSG_FLOW_ERROR)
-      return;
+        return;
     s->statem.in_init = 1;
     s->statem.state = MSG_FLOW_ERROR;
     if (al != SSL_AD_NO_ALERT
-            && s->statem.enc_write_state != ENC_WRITE_STATE_INVALID)
+        && s->statem.enc_write_state != ENC_WRITE_STATE_INVALID)
         ssl3_send_alert(s, SSL3_AL_FATAL, al);
 }
 
@@ -137,8 +137,7 @@ void ossl_statem_send_fatal(SSL *s, int al)
  * into an error state and sends an alert if appropriate.
  * This is a permanent error for the current connection.
  */
-void ossl_statem_fatal(SSL *s, int al, int reason, const char *fmt, ...)
-{
+void ossl_statem_fatal(SSL *s, int al, int reason, const char *fmt, ...) {
     va_list args;
 
     va_start(args, fmt);
@@ -167,26 +166,22 @@ void ossl_statem_fatal(SSL *s, int al, int reason, const char *fmt, ...)
  *   1: Yes
  *   0: No
  */
-int ossl_statem_in_error(const SSL *s)
-{
+int ossl_statem_in_error(const SSL *s) {
     if (s->statem.state == MSG_FLOW_ERROR)
         return 1;
 
     return 0;
 }
 
-void ossl_statem_set_in_init(SSL *s, int init)
-{
+void ossl_statem_set_in_init(SSL *s, int init) {
     s->statem.in_init = init;
 }
 
-int ossl_statem_get_in_handshake(SSL *s)
-{
+int ossl_statem_get_in_handshake(SSL *s) {
     return s->statem.in_handshake;
 }
 
-void ossl_statem_set_in_handshake(SSL *s, int inhand)
-{
+void ossl_statem_set_in_handshake(SSL *s, int inhand) {
     if (inhand)
         s->statem.in_handshake++;
     else
@@ -194,14 +189,13 @@ void ossl_statem_set_in_handshake(SSL *s, int inhand)
 }
 
 /* Are we in a sensible state to skip over unreadable early data? */
-int ossl_statem_skip_early_data(SSL *s)
-{
+int ossl_statem_skip_early_data(SSL *s) {
     if (s->ext.early_data != SSL_EARLY_DATA_REJECTED)
         return 0;
 
     if (!s->server
-            || s->statem.hand_state != TLS_ST_EARLY_DATA
-            || s->hello_retry_request == SSL_HRR_COMPLETE)
+        || s->statem.hand_state != TLS_ST_EARLY_DATA
+        || s->hello_retry_request == SSL_HRR_COMPLETE)
         return 0;
 
     return 1;
@@ -215,11 +209,10 @@ int ossl_statem_skip_early_data(SSL *s)
  * attempting to read data (SSL_read*()), or -1 if we are in SSL_do_handshake()
  * or similar.
  */
-void ossl_statem_check_finish_init(SSL *s, int sending)
-{
+void ossl_statem_check_finish_init(SSL *s, int sending) {
     if (sending == -1) {
         if (s->statem.hand_state == TLS_ST_PENDING_EARLY_DATA_END
-                || s->statem.hand_state == TLS_ST_EARLY_DATA) {
+            || s->statem.hand_state == TLS_ST_EARLY_DATA) {
             ossl_statem_set_in_init(s, 1);
             if (s->early_data_state == SSL_EARLY_DATA_WRITE_RETRY) {
                 /*
@@ -231,9 +224,9 @@ void ossl_statem_check_finish_init(SSL *s, int sending)
         }
     } else if (!s->server) {
         if ((sending && (s->statem.hand_state == TLS_ST_PENDING_EARLY_DATA_END
-                      || s->statem.hand_state == TLS_ST_EARLY_DATA)
-                  && s->early_data_state != SSL_EARLY_DATA_WRITING)
-                || (!sending && s->statem.hand_state == TLS_ST_EARLY_DATA)) {
+                         || s->statem.hand_state == TLS_ST_EARLY_DATA)
+             && s->early_data_state != SSL_EARLY_DATA_WRITING)
+            || (!sending && s->statem.hand_state == TLS_ST_EARLY_DATA)) {
             ossl_statem_set_in_init(s, 1);
             /*
              * SSL_write() has been called directly. We don't allow any more
@@ -244,13 +237,12 @@ void ossl_statem_check_finish_init(SSL *s, int sending)
         }
     } else {
         if (s->early_data_state == SSL_EARLY_DATA_FINISHED_READING
-                && s->statem.hand_state == TLS_ST_EARLY_DATA)
+            && s->statem.hand_state == TLS_ST_EARLY_DATA)
             ossl_statem_set_in_init(s, 1);
     }
 }
 
-void ossl_statem_set_hello_verify_done(SSL *s)
-{
+void ossl_statem_set_hello_verify_done(SSL *s) {
     s->statem.state = MSG_FLOW_UNINITED;
     s->statem.in_init = 1;
     /*
@@ -263,31 +255,26 @@ void ossl_statem_set_hello_verify_done(SSL *s)
     s->statem.hand_state = TLS_ST_SR_CLNT_HELLO;
 }
 
-int ossl_statem_connect(SSL *s)
-{
+int ossl_statem_connect(SSL *s) {
     return state_machine(s, 0);
 }
 
-int ossl_statem_accept(SSL *s)
-{
+int ossl_statem_accept(SSL *s) {
     return state_machine(s, 1);
 }
 
-int ossl_statem_connect_reduce(SSL *s)
-{
+int ossl_statem_connect_reduce(SSL *s) {
     return state_machine_reduce(s, 0);
 }
 
-int ossl_statem_accept_reduce(SSL *s)
-{
+int ossl_statem_accept_reduce(SSL *s) {
     return state_machine_reduce(s, 1);
 }
 
 
-typedef void (*info_cb) (const SSL *, int, int);
+typedef void (*info_cb)(const SSL *, int, int);
 
-static info_cb get_callback(SSL *s)
-{
+static info_cb get_callback(SSL *s) {
     if (s->info_callback != NULL)
         return s->info_callback;
     else if (s->ctx->info_callback != NULL)
@@ -324,11 +311,10 @@ static info_cb get_callback(SSL *s)
  *   1: Success
  * <=0: NBIO or error
  */
-static int state_machine(SSL *s, int server)
-{
+static int state_machine(SSL *s, int server) {
     printf("state_machine start \n");
     BUF_MEM *buf = NULL;
-    void (*cb) (const SSL *ssl, int type, int val) = NULL;
+    void (*cb)(const SSL *ssl, int type, int val) = NULL;
     OSSL_STATEM *st = &s->statem;
     int ret = -1;
     int ssret;
@@ -365,7 +351,7 @@ static int state_machine(SSL *s, int server)
 
     /* Initialise state machine */
     if (st->state == MSG_FLOW_UNINITED
-            || st->state == MSG_FLOW_FINISHED) {
+        || st->state == MSG_FLOW_FINISHED) {
         if (st->state == MSG_FLOW_UNINITED) {
             /*
              * Implement
@@ -373,7 +359,7 @@ static int state_machine(SSL *s, int server)
             printf("st->state : MSG_FLOW_UNINITED\n");
             st->hand_state = TLS_ST_BEFORE;
             st->request_state = TLS_ST_BEFORE;
-        }else{
+        } else {
             printf("st->state 초기값이 MSG_FLOW_FINISHED\n");
         }
 
@@ -382,7 +368,7 @@ static int state_machine(SSL *s, int server)
         // NOT
         if (cb != NULL) {
             printf("cb(call back)이 NULL이 아니다.\n");
-            if (SSL_IS_FIRST_HANDSHAKE(s) || !SSL_IS_TLS13(s)){
+            if (SSL_IS_FIRST_HANDSHAKE(s) || !SSL_IS_TLS13(s)) {
                 printf("cb(call back)를 세팅하네.\n");
                 cb(s, SSL_CB_HANDSHAKE_START, 1);
             }
@@ -450,13 +436,13 @@ static int state_machine(SSL *s, int server)
 #ifndef OPENSSL_NO_SCTP
         if (!SSL_IS_DTLS(s) || !BIO_dgram_is_sctp(SSL_get_wbio(s)))
 #endif
-            if (!ssl_init_wbio_buffer(s)) {
-                SSLfatal(s, SSL_AD_NO_ALERT, ERR_R_INTERNAL_ERROR);
-                goto end;
-            }
+        if (!ssl_init_wbio_buffer(s)) {
+            SSLfatal(s, SSL_AD_NO_ALERT, ERR_R_INTERNAL_ERROR);
+            goto end;
+        }
 
         if ((SSL_in_before(s))
-                || s->renegotiate) {
+            || s->renegotiate) {
             if (!tls_setup_handshake(s)) {
                 /* SSLfatal() already called */
                 goto end;
@@ -523,7 +509,7 @@ static int state_machine(SSL *s, int server)
 
     ret = 1;
 
- end:
+    end:
     st->in_handshake--;
 
 #ifndef OPENSSL_NO_SCTP
@@ -549,11 +535,10 @@ static int state_machine(SSL *s, int server)
     return ret;
 }
 
-static int state_machine_reduce(SSL *s, int server)
-{
+static int state_machine_reduce(SSL *s, int server) {
     printf("state_machine reduce start \n");
     BUF_MEM *buf = NULL;
-    void (*cb) (const SSL *ssl, int type, int val) = NULL;
+    void (*cb)(const SSL *ssl, int type, int val) = NULL;
     OSSL_STATEM *st = &s->statem;
     int ret = -1;
     int ssret;
@@ -590,7 +575,7 @@ static int state_machine_reduce(SSL *s, int server)
 
     /* Initialise state machine */
     if (st->state == MSG_FLOW_UNINITED
-    || st->state == MSG_FLOW_FINISHED) {
+        || st->state == MSG_FLOW_FINISHED) {
         if (st->state == MSG_FLOW_UNINITED) {
             /*
              * Implement
@@ -598,7 +583,7 @@ static int state_machine_reduce(SSL *s, int server)
             printf("st->state : MSG_FLOW_UNINITED\n");
             st->hand_state = TLS_ST_BEFORE;
             st->request_state = TLS_ST_BEFORE;
-        }else{
+        } else {
             printf("st->state 초기값이 MSG_FLOW_FINISHED\n");
         }
 
@@ -607,7 +592,7 @@ static int state_machine_reduce(SSL *s, int server)
         // NOT
         if (cb != NULL) {
             printf("cb(call back)이 NULL이 아니다.\n");
-            if (SSL_IS_FIRST_HANDSHAKE(s) || !SSL_IS_TLS13(s)){
+            if (SSL_IS_FIRST_HANDSHAKE(s) || !SSL_IS_TLS13(s)) {
                 printf("cb(call back)를 세팅하네.\n");
                 cb(s, SSL_CB_HANDSHAKE_START, 1);
             }
@@ -623,7 +608,7 @@ static int state_machine_reduce(SSL *s, int server)
             // NOT
             printf("SSL_IS_DTLS.\n");
             if ((s->version & 0xff00) != (DTLS1_VERSION & 0xff00) &&
-            (server || (s->version & 0xff00) != (DTLS1_BAD_VER & 0xff00))) {
+                (server || (s->version & 0xff00) != (DTLS1_BAD_VER & 0xff00))) {
                 SSLfatal(s, SSL_AD_NO_ALERT, ERR_R_INTERNAL_ERROR);
                 goto end;
             }
@@ -675,13 +660,13 @@ static int state_machine_reduce(SSL *s, int server)
 #ifndef OPENSSL_NO_SCTP
         if (!SSL_IS_DTLS(s) || !BIO_dgram_is_sctp(SSL_get_wbio(s)))
 #endif
-            if (!ssl_init_wbio_buffer(s)) {
+        if (!ssl_init_wbio_buffer(s)) {
             SSLfatal(s, SSL_AD_NO_ALERT, ERR_R_INTERNAL_ERROR);
             goto end;
         }
 
         if ((SSL_in_before(s))
-        || s->renegotiate) {
+            || s->renegotiate) {
             if (!tls_setup_handshake(s)) {
                 /* SSLfatal() already called */
                 goto end;
@@ -762,7 +747,7 @@ static int state_machine_reduce(SSL *s, int server)
     }
 #endif
 
-BUF_MEM_free(buf);
+    BUF_MEM_free(buf);
     // NOT
     if (cb != NULL) {
         printf("cb is not null.\n");
@@ -773,11 +758,11 @@ BUF_MEM_free(buf);
     }
     return ret;
 }
+
 /*
  * Initialise the MSG_FLOW_READING sub-state machine
  */
-static void init_read_state_machine(SSL *s)
-{
+static void init_read_state_machine(SSL *s) {
     OSSL_STATEM *st = &s->statem;
 
     st->read_state = READ_STATE_HEADER;
@@ -785,9 +770,9 @@ static void init_read_state_machine(SSL *s)
 
 static int grow_init_buf(SSL *s, size_t size) {
 
-    size_t msg_offset = (char *)s->init_msg - s->init_buf->data;
+    size_t msg_offset = (char *) s->init_msg - s->init_buf->data;
 
-    if (!BUF_MEM_grow_clean(s->init_buf, (int)size))
+    if (!BUF_MEM_grow_clean(s->init_buf, (int) size))
         return 0;
 
     if (size < msg_offset)
@@ -824,17 +809,16 @@ static int grow_init_buf(SSL *s, size_t size) {
  * control returns to the calling application. When this function is recalled we
  * will resume in the same state where we left off.
  */
-static SUB_STATE_RETURN read_state_machine(SSL *s)
-{
+static SUB_STATE_RETURN read_state_machine(SSL *s) {
     OSSL_STATEM *st = &s->statem;
     int ret, mt;
     size_t len = 0;
-    int (*transition) (SSL *s, int mt);
+    int (*transition)(SSL *s, int mt);
     PACKET pkt;
-    MSG_PROCESS_RETURN(*process_message) (SSL *s, PACKET *pkt);
-    WORK_STATE(*post_process_message) (SSL *s, WORK_STATE wst);
-    size_t (*max_message_size) (SSL *s);
-    void (*cb) (const SSL *ssl, int type, int val) = NULL;
+    MSG_PROCESS_RETURN (*process_message)(SSL *s, PACKET *pkt);
+    WORK_STATE (*post_process_message)(SSL *s, WORK_STATE wst);
+    size_t (*max_message_size)(SSL *s);
+    void (*cb)(const SSL *ssl, int type, int val) = NULL;
 
     cb = get_callback(s);
 
@@ -857,152 +841,152 @@ static SUB_STATE_RETURN read_state_machine(SSL *s)
 
     while (1) {
         switch (st->read_state) {
-        case READ_STATE_HEADER:
+            case READ_STATE_HEADER:
 //            printf("READ_STATE_HEADER in read_state_machine func\n");
-            /* Get the state the peer wants to move to */
-            if (SSL_IS_DTLS(s)) {
-                /*
-                 * In DTLS we get the whole message in one go - header and body
-                 */
-                ret = dtls_get_message(s, &mt);
-            } else {
+                /* Get the state the peer wants to move to */
+                if (SSL_IS_DTLS(s)) {
+                    /*
+                     * In DTLS we get the whole message in one go - header and body
+                     */
+                    ret = dtls_get_message(s, &mt);
+                } else {
 //                printf("    read message header in read_state_machine func\n");
-                ret = tls_get_message_header(s, &mt);
-            }
+                    ret = tls_get_message_header(s, &mt);
+                }
 
-            if (ret == 0) {
-                /* Could be non-blocking IO */
-                return SUB_STATE_ERROR;
-            }
+                if (ret == 0) {
+                    /* Could be non-blocking IO */
+                    return SUB_STATE_ERROR;
+                }
 
-            if (cb != NULL) {
-                /* Notify callback of an impending state change */
-                if (s->server)
-                    cb(s, SSL_CB_ACCEPT_LOOP, 1);
-                else
-                    cb(s, SSL_CB_CONNECT_LOOP, 1);
-            }
-            /*
-             * Validate that we are allowed to move to the new state and move
-             * to that state if so
-             */
-            if (!transition(s, mt))
-                return SUB_STATE_ERROR;
+                if (cb != NULL) {
+                    /* Notify callback of an impending state change */
+                    if (s->server)
+                        cb(s, SSL_CB_ACCEPT_LOOP, 1);
+                    else
+                        cb(s, SSL_CB_CONNECT_LOOP, 1);
+                }
+                /*
+                 * Validate that we are allowed to move to the new state and move
+                 * to that state if so
+                 */
+                if (!transition(s, mt))
+                    return SUB_STATE_ERROR;
 
-            if (s->s3.tmp.message_size > max_message_size(s)) {
-                SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER,
-                         SSL_R_EXCESSIVE_MESSAGE_SIZE);
-                return SUB_STATE_ERROR;
-            }
+                if (s->s3.tmp.message_size > max_message_size(s)) {
+                    SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER,
+                             SSL_R_EXCESSIVE_MESSAGE_SIZE);
+                    return SUB_STATE_ERROR;
+                }
 
-            /* dtls_get_message already did this */
-            if (!SSL_IS_DTLS(s)
+                /* dtls_get_message already did this */
+                if (!SSL_IS_DTLS(s)
                     && s->s3.tmp.message_size > 0
                     && !grow_init_buf(s, s->s3.tmp.message_size
                                          + SSL3_HM_HEADER_LENGTH)) {
-                SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_BUF_LIB);
-                return SUB_STATE_ERROR;
-            }
-
-            st->read_state = READ_STATE_BODY;
-            /* Fall through */
-
-        case READ_STATE_BODY:
-//            printf("READ_STATE_BODY in read_state_machine func\n");
-            if (SSL_IS_DTLS(s)) {
-                /*
-                 * Actually we already have the body, but we give DTLS the
-                 * opportunity to do any further processing.
-                 */
-                ret = dtls_get_message_body(s, &len);
-            } else {
-//                printf("    read message body in read_state_machine func\n");
-                ret = tls_get_message_body(s, &len);
-            }
-            if (ret == 0) {
-                /* Could be non-blocking IO */
-                return SUB_STATE_ERROR;
-            }
-
-            s->first_packet = 0;
-            if (!PACKET_buf_init(&pkt, s->init_msg, len)) {
-                SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-                return SUB_STATE_ERROR;
-            }
-            ret = process_message(s, &pkt);
-
-            /* Discard the packet data */
-            s->init_num = 0;
-
-            switch (ret) {
-            case MSG_PROCESS_ERROR:
-                check_fatal(s);
-                return SUB_STATE_ERROR;
-
-            case MSG_PROCESS_FINISHED_READING:
-//                printf("    MSG_PROCESS_FINISHED_READING in read_state_machine func\n");
-                if (SSL_IS_DTLS(s)) {
-                    dtls1_stop_timer(s);
+                    SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_BUF_LIB);
+                    return SUB_STATE_ERROR;
                 }
-                return SUB_STATE_FINISHED;
 
-            case MSG_PROCESS_CONTINUE_PROCESSING:
+                st->read_state = READ_STATE_BODY;
+                /* Fall through */
+
+            case READ_STATE_BODY:
+//            printf("READ_STATE_BODY in read_state_machine func\n");
+                if (SSL_IS_DTLS(s)) {
+                    /*
+                     * Actually we already have the body, but we give DTLS the
+                     * opportunity to do any further processing.
+                     */
+                    ret = dtls_get_message_body(s, &len);
+                } else {
+//                printf("    read message body in read_state_machine func\n");
+                    ret = tls_get_message_body(s, &len);
+                }
+                if (ret == 0) {
+                    /* Could be non-blocking IO */
+                    return SUB_STATE_ERROR;
+                }
+
+                s->first_packet = 0;
+                if (!PACKET_buf_init(&pkt, s->init_msg, len)) {
+                    SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+                    return SUB_STATE_ERROR;
+                }
+                ret = process_message(s, &pkt);
+
+                /* Discard the packet data */
+                s->init_num = 0;
+
+                switch (ret) {
+                    case MSG_PROCESS_ERROR:
+                        check_fatal(s);
+                        return SUB_STATE_ERROR;
+
+                    case MSG_PROCESS_FINISHED_READING:
+//                printf("    MSG_PROCESS_FINISHED_READING in read_state_machine func\n");
+                        if (SSL_IS_DTLS(s)) {
+                            dtls1_stop_timer(s);
+                        }
+                        return SUB_STATE_FINISHED;
+
+                    case MSG_PROCESS_CONTINUE_PROCESSING:
 //                printf("    MSG_PROCESS_CONTINUE_PROCESSING in read_state_machine func\n");
-                st->read_state = READ_STATE_POST_PROCESS;
-                st->read_state_work = WORK_MORE_A;
+                        st->read_state = READ_STATE_POST_PROCESS;
+                        st->read_state_work = WORK_MORE_A;
+                        break;
+
+                    default:
+//                printf("    default in read_state_machine func\n");
+                        st->read_state = READ_STATE_HEADER;
+                        break;
+                }
+                break;
+
+            case READ_STATE_POST_PROCESS:
+//            printf("READ_STATE_POST_PROCESS in read_state_machine func\n");
+                st->read_state_work = post_process_message(s, st->read_state_work);
+                switch (st->read_state_work) {
+                    case WORK_ERROR:
+                        check_fatal(s);
+                        /* Fall through */
+                    case WORK_MORE_A:
+                    case WORK_MORE_B:
+                    case WORK_MORE_C:
+                        return SUB_STATE_ERROR;
+
+                    case WORK_FINISHED_CONTINUE:
+//                printf("    WORK_FINISHED_CONTINUE in read_state_machine func\n");
+                        st->read_state = READ_STATE_HEADER;
+                        break;
+
+                    case WORK_FINISHED_STOP:
+//                printf("    WORK_FINISHED_STOP in read_state_machine func\n");
+                        if (SSL_IS_DTLS(s)) {
+                            dtls1_stop_timer(s);
+                        }
+                        return SUB_STATE_FINISHED;
+                }
                 break;
 
             default:
-//                printf("    default in read_state_machine func\n");
-                st->read_state = READ_STATE_HEADER;
-                break;
-            }
-            break;
-
-        case READ_STATE_POST_PROCESS:
-//            printf("READ_STATE_POST_PROCESS in read_state_machine func\n");
-            st->read_state_work = post_process_message(s, st->read_state_work);
-            switch (st->read_state_work) {
-            case WORK_ERROR:
-                check_fatal(s);
-                /* Fall through */
-            case WORK_MORE_A:
-            case WORK_MORE_B:
-            case WORK_MORE_C:
+                /* Shouldn't happen */
+                SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
                 return SUB_STATE_ERROR;
-
-            case WORK_FINISHED_CONTINUE:
-//                printf("    WORK_FINISHED_CONTINUE in read_state_machine func\n");
-                st->read_state = READ_STATE_HEADER;
-                break;
-
-            case WORK_FINISHED_STOP:
-//                printf("    WORK_FINISHED_STOP in read_state_machine func\n");
-                if (SSL_IS_DTLS(s)) {
-                    dtls1_stop_timer(s);
-                }
-                return SUB_STATE_FINISHED;
-            }
-            break;
-
-        default:
-            /* Shouldn't happen */
-            SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-            return SUB_STATE_ERROR;
         }
     }
 }
-static SUB_STATE_RETURN read_state_machine_reduce(SSL *s)
-{
+
+static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
     OSSL_STATEM *st = &s->statem;
     int ret, mt;
     size_t len = 0;
-    int (*transition) (SSL *s, int mt);
+    int (*transition)(SSL *s, int mt);
     PACKET pkt;
-    MSG_PROCESS_RETURN(*process_message) (SSL *s, PACKET *pkt);
-    WORK_STATE(*post_process_message) (SSL *s, WORK_STATE wst);
-    size_t (*max_message_size) (SSL *s);
-    void (*cb) (const SSL *ssl, int type, int val) = NULL;
+    MSG_PROCESS_RETURN (*process_message)(SSL *s, PACKET *pkt);
+    WORK_STATE (*post_process_message)(SSL *s, WORK_STATE wst);
+    size_t (*max_message_size)(SSL *s);
+    void (*cb)(const SSL *ssl, int type, int val) = NULL;
 
     cb = get_callback(s);
 
@@ -1065,9 +1049,9 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s)
 
                 /* dtls_get_message already did this */
                 if (!SSL_IS_DTLS(s)
-                && s->s3.tmp.message_size > 0
-                && !grow_init_buf(s, s->s3.tmp.message_size
-                + SSL3_HM_HEADER_LENGTH)) {
+                    && s->s3.tmp.message_size > 0
+                    && !grow_init_buf(s, s->s3.tmp.message_size
+                                         + SSL3_HM_HEADER_LENGTH)) {
                     SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_BUF_LIB);
                     return SUB_STATE_ERROR;
                 }
@@ -1075,103 +1059,103 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s)
                 st->read_state = READ_STATE_BODY;
                 /* Fall through */
 
-                case READ_STATE_BODY:
-                    //            printf("READ_STATE_BODY in read_state_machine func\n");
-                    if (SSL_IS_DTLS(s)) {
-                        /*
-                         * Actually we already have the body, but we give DTLS the
-                         * opportunity to do any further processing.
-                         */
-                        ret = dtls_get_message_body(s, &len);
-                    } else {
-                        //                printf("    read message body in read_state_machine func\n");
-                        ret = tls_get_message_body(s, &len);
-                    }
-                    if (ret == 0) {
-                        /* Could be non-blocking IO */
+            case READ_STATE_BODY:
+                //            printf("READ_STATE_BODY in read_state_machine func\n");
+                if (SSL_IS_DTLS(s)) {
+                    /*
+                     * Actually we already have the body, but we give DTLS the
+                     * opportunity to do any further processing.
+                     */
+                    ret = dtls_get_message_body(s, &len);
+                } else {
+                    //                printf("    read message body in read_state_machine func\n");
+                    ret = tls_get_message_body(s, &len);
+                }
+                if (ret == 0) {
+                    /* Could be non-blocking IO */
+                    return SUB_STATE_ERROR;
+                }
+
+                s->first_packet = 0;
+                if (!PACKET_buf_init(&pkt, s->init_msg, len)) {
+                    SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+                    return SUB_STATE_ERROR;
+                }
+                ret = process_message(s, &pkt);
+
+                /* Discard the packet data */
+                s->init_num = 0;
+
+                switch (ret) {
+                    case MSG_PROCESS_ERROR:
+                        check_fatal(s);
                         return SUB_STATE_ERROR;
-                    }
 
-                    s->first_packet = 0;
-                    if (!PACKET_buf_init(&pkt, s->init_msg, len)) {
-                        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-                        return SUB_STATE_ERROR;
-                    }
-                    ret = process_message(s, &pkt);
-
-                    /* Discard the packet data */
-                    s->init_num = 0;
-
-                    switch (ret) {
-                        case MSG_PROCESS_ERROR:
-                            check_fatal(s);
-                            return SUB_STATE_ERROR;
-
-                            case MSG_PROCESS_FINISHED_READING:
-                                //                printf("    MSG_PROCESS_FINISHED_READING in read_state_machine func\n");
-                                if (SSL_IS_DTLS(s)) {
-                                    dtls1_stop_timer(s);
-                                }
-                                return SUB_STATE_FINISHED;
-
-                                case MSG_PROCESS_CONTINUE_PROCESSING:
-                                    //                printf("    MSG_PROCESS_CONTINUE_PROCESSING in read_state_machine func\n");
-                                    st->read_state = READ_STATE_POST_PROCESS;
-                                    st->read_state_work = WORK_MORE_A;
-                                    break;
-
-                                    default:
-                                        //                printf("    default in read_state_machine func\n");
-                                        st->read_state = READ_STATE_HEADER;
-                                        break;
-                    }
-                    break;
-
-                    case READ_STATE_POST_PROCESS:
-                        //            printf("READ_STATE_POST_PROCESS in read_state_machine func\n");
-                        st->read_state_work = post_process_message(s, st->read_state_work);
-                        switch (st->read_state_work) {
-                            case WORK_ERROR:
-                                check_fatal(s);
-                                /* Fall through */
-                                case WORK_MORE_A:
-                                    case WORK_MORE_B:
-                                        case WORK_MORE_C:
-                                            return SUB_STATE_ERROR;
-
-                                            case WORK_FINISHED_CONTINUE:
-                                                //                printf("    WORK_FINISHED_CONTINUE in read_state_machine func\n");
-                                                st->read_state = READ_STATE_HEADER;
-                                                break;
-
-                                                case WORK_FINISHED_STOP:
-                                                    //                printf("    WORK_FINISHED_STOP in read_state_machine func\n");
-                                                    if (SSL_IS_DTLS(s)) {
-                                                        dtls1_stop_timer(s);
-                                                    }
-                                                    return SUB_STATE_FINISHED;
+                    case MSG_PROCESS_FINISHED_READING:
+                        //                printf("    MSG_PROCESS_FINISHED_READING in read_state_machine func\n");
+                        if (SSL_IS_DTLS(s)) {
+                            dtls1_stop_timer(s);
                         }
+                        return SUB_STATE_FINISHED;
+
+                    case MSG_PROCESS_CONTINUE_PROCESSING:
+                        //                printf("    MSG_PROCESS_CONTINUE_PROCESSING in read_state_machine func\n");
+                        st->read_state = READ_STATE_POST_PROCESS;
+                        st->read_state_work = WORK_MORE_A;
                         break;
 
-                        default:
-                            /* Shouldn't happen */
-                            SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-                            return SUB_STATE_ERROR;
+                    default:
+                        //                printf("    default in read_state_machine func\n");
+                        st->read_state = READ_STATE_HEADER;
+                        break;
+                }
+                break;
+
+            case READ_STATE_POST_PROCESS:
+                //            printf("READ_STATE_POST_PROCESS in read_state_machine func\n");
+                st->read_state_work = post_process_message(s, st->read_state_work);
+                switch (st->read_state_work) {
+                    case WORK_ERROR:
+                        check_fatal(s);
+                        /* Fall through */
+                    case WORK_MORE_A:
+                    case WORK_MORE_B:
+                    case WORK_MORE_C:
+                        return SUB_STATE_ERROR;
+
+                    case WORK_FINISHED_CONTINUE:
+                        //                printf("    WORK_FINISHED_CONTINUE in read_state_machine func\n");
+                        st->read_state = READ_STATE_HEADER;
+                        break;
+
+                    case WORK_FINISHED_STOP:
+                        //                printf("    WORK_FINISHED_STOP in read_state_machine func\n");
+                        if (SSL_IS_DTLS(s)) {
+                            dtls1_stop_timer(s);
+                        }
+                        return SUB_STATE_FINISHED;
+                }
+                break;
+
+            default:
+                /* Shouldn't happen */
+                SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+                return SUB_STATE_ERROR;
         }
     }
 }
+
 /*
  * Send a previously constructed message to the peer.
  */
-static int statem_do_write(SSL *s)
-{
+static int statem_do_write(SSL *s) {
     OSSL_STATEM *st = &s->statem;
 
     if (st->hand_state == TLS_ST_CW_CHANGE
         || st->hand_state == TLS_ST_SW_CHANGE) {
         if (SSL_IS_DTLS(s))
             return dtls1_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
-        else{
+        else {
             printf("            ssl3_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC)\n");
             return ssl3_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
         }
@@ -1187,8 +1171,7 @@ static int statem_do_write(SSL *s)
 /*
  * Initialise the MSG_FLOW_WRITING sub-state machine
  */
-static void init_write_state_machine(SSL *s)
-{
+static void init_write_state_machine(SSL *s) {
     OSSL_STATEM *st = &s->statem;
 
     st->write_state = WRITE_STATE_TRANSITION;
@@ -1225,18 +1208,17 @@ static void init_write_state_machine(SSL *s)
  * message has been completed. As for WRITE_STATE_PRE_WORK this could also
  * result in an NBIO event.
  */
-static SUB_STATE_RETURN write_state_machine(SSL *s)
-{
+static SUB_STATE_RETURN write_state_machine(SSL *s) {
     OSSL_STATEM *st = &s->statem;
     int ret;
-    WRITE_TRAN(*transition) (SSL *s);
-    WORK_STATE(*pre_work) (SSL *s, WORK_STATE wst);
-    WORK_STATE(*post_work) (SSL *s, WORK_STATE wst);
-    int (*get_construct_message_f) (SSL *s, WPACKET *pkt,
-                                    int (**confunc) (SSL *s, WPACKET *pkt),
-                                    int *mt);
-    void (*cb) (const SSL *ssl, int type, int val) = NULL;
-    int (*confunc) (SSL *s, WPACKET *pkt);
+    WRITE_TRAN (*transition)(SSL *s);
+    WORK_STATE (*pre_work)(SSL *s, WORK_STATE wst);
+    WORK_STATE (*post_work)(SSL *s, WORK_STATE wst);
+    int (*get_construct_message_f)(SSL *s, WPACKET *pkt,
+                                   int (**confunc)(SSL *s, WPACKET *pkt),
+                                   int *mt);
+    void (*cb)(const SSL *ssl, int type, int val) = NULL;
+    int (*confunc)(SSL *s, WPACKET *pkt);
     int mt;
     WPACKET pkt;
 
@@ -1247,7 +1229,7 @@ static SUB_STATE_RETURN write_state_machine(SSL *s)
         pre_work = ossl_statem_server_pre_work;
         post_work = ossl_statem_server_post_work;
         get_construct_message_f = ossl_statem_server_construct_message;
-    } else if(!s->server){
+    } else if (!s->server) {
         printf("not using dns\n");
         transition = ossl_statem_client_write_transition;
         pre_work = ossl_statem_client_pre_work;
@@ -1284,135 +1266,135 @@ static SUB_STATE_RETURN write_state_machine(SSL *s)
 
     while (1) {
         switch (st->write_state) {
-        case WRITE_STATE_TRANSITION:
+            case WRITE_STATE_TRANSITION:
 //            printf("WRITE_STATE_TRANSITION in write_state_machine func \n");
-            if (cb != NULL) {
-                /* Notify callback of an impending state change */
-                if (s->server)
-                    cb(s, SSL_CB_ACCEPT_LOOP, 1);
-                else
-                    cb(s, SSL_CB_CONNECT_LOOP, 1);
-            }
-            switch (transition(s)) {
-            case WRITE_TRAN_CONTINUE:
+                if (cb != NULL) {
+                    /* Notify callback of an impending state change */
+                    if (s->server)
+                        cb(s, SSL_CB_ACCEPT_LOOP, 1);
+                    else
+                        cb(s, SSL_CB_CONNECT_LOOP, 1);
+                }
+                switch (transition(s)) {
+                    case WRITE_TRAN_CONTINUE:
 //                printf("transition(s) is WRITE_TRAN_CONTINUE in write_state_machine func \n");
-                st->write_state = WRITE_STATE_PRE_WORK;
-                st->write_state_work = WORK_MORE_A;
-                break;
+                        st->write_state = WRITE_STATE_PRE_WORK;
+                        st->write_state_work = WORK_MORE_A;
+                        break;
 
-            case WRITE_TRAN_FINISHED:
+                    case WRITE_TRAN_FINISHED:
 //                printf("transition(s) is WRITE_TRAN_FINISHED in write_state_machine func \n");
-                return SUB_STATE_FINISHED;
+                        return SUB_STATE_FINISHED;
+                        break;
+
+                    case WRITE_TRAN_ERROR:
+                        check_fatal(s);
+                        return SUB_STATE_ERROR;
+                }
                 break;
 
-            case WRITE_TRAN_ERROR:
-                check_fatal(s);
-                return SUB_STATE_ERROR;
-            }
-            break;
-
-        case WRITE_STATE_PRE_WORK:
+            case WRITE_STATE_PRE_WORK:
 //            printf("WRITE_STATE_PRE_WORK in write_state_machine func \n");
-            switch (st->write_state_work = pre_work(s, st->write_state_work)) {
-            case WORK_ERROR:
-                check_fatal(s);
-                /* Fall through */
-            case WORK_MORE_A:
-            case WORK_MORE_B:
-            case WORK_MORE_C:
-                return SUB_STATE_ERROR;
+                switch (st->write_state_work = pre_work(s, st->write_state_work)) {
+                    case WORK_ERROR:
+                        check_fatal(s);
+                        /* Fall through */
+                    case WORK_MORE_A:
+                    case WORK_MORE_B:
+                    case WORK_MORE_C:
+                        return SUB_STATE_ERROR;
 
-            case WORK_FINISHED_CONTINUE:
+                    case WORK_FINISHED_CONTINUE:
 //                printf("WRITE_FINISHED_CONTINUE in write_state_machine func \n");
-                st->write_state = WRITE_STATE_SEND;
-                break;
+                        st->write_state = WRITE_STATE_SEND;
+                        break;
 
-            case WORK_FINISHED_STOP:
-                return SUB_STATE_END_HANDSHAKE;
-            }
-            if (!get_construct_message_f(s, &pkt, &confunc, &mt)) {
-                /* SSLfatal() already called */
-                return SUB_STATE_ERROR;
-            }
-            if (mt == SSL3_MT_DUMMY) {
-                /* Skip construction and sending. This isn't a "real" state */
+                    case WORK_FINISHED_STOP:
+                        return SUB_STATE_END_HANDSHAKE;
+                }
+                if (!get_construct_message_f(s, &pkt, &confunc, &mt)) {
+                    /* SSLfatal() already called */
+                    return SUB_STATE_ERROR;
+                }
+                if (mt == SSL3_MT_DUMMY) {
+                    /* Skip construction and sending. This isn't a "real" state */
+                    st->write_state = WRITE_STATE_POST_WORK;
+                    st->write_state_work = WORK_MORE_A;
+                    break;
+                }
+                if (!WPACKET_init(&pkt, s->init_buf)
+                    || !ssl_set_handshake_header(s, &pkt, mt)) {
+                    WPACKET_cleanup(&pkt);
+                    SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+                    return SUB_STATE_ERROR;
+                }
+                if (confunc != NULL && !confunc(s, &pkt)) {
+                    WPACKET_cleanup(&pkt);
+                    check_fatal(s);
+                    return SUB_STATE_ERROR;
+                }
+                if (!ssl_close_construct_packet(s, &pkt, mt)
+                    || !WPACKET_finish(&pkt)) {
+                    WPACKET_cleanup(&pkt);
+                    SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+                    return SUB_STATE_ERROR;
+                }
+
+                /* Fall through */
+
+            case WRITE_STATE_SEND:
+                printf("    (write_state_machine) hand_state -> %s\n", SSL_state_string_long(s));
+//            printf("WRITE_STATE_SEND in write_state_machine func \n");
+                if (SSL_IS_DTLS(s) && st->use_timer) {
+                    dtls1_start_timer(s);
+                }
+                ret = statem_do_write(s);
+                if (ret <= 0) {
+                    return SUB_STATE_ERROR;
+                }
                 st->write_state = WRITE_STATE_POST_WORK;
                 st->write_state_work = WORK_MORE_A;
-                break;
-            }
-            if (!WPACKET_init(&pkt, s->init_buf)
-                    || !ssl_set_handshake_header(s, &pkt, mt)) {
-                WPACKET_cleanup(&pkt);
-                SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-                return SUB_STATE_ERROR;
-            }
-            if (confunc != NULL && !confunc(s, &pkt)) {
-                WPACKET_cleanup(&pkt);
-                check_fatal(s);
-                return SUB_STATE_ERROR;
-            }
-            if (!ssl_close_construct_packet(s, &pkt, mt)
-                    || !WPACKET_finish(&pkt)) {
-                WPACKET_cleanup(&pkt);
-                SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-                return SUB_STATE_ERROR;
-            }
-
-            /* Fall through */
-
-        case WRITE_STATE_SEND:
-            printf("    (write_state_machine) hand_state -> %s\n", SSL_state_string_long(s));
-//            printf("WRITE_STATE_SEND in write_state_machine func \n");
-            if (SSL_IS_DTLS(s) && st->use_timer) {
-                dtls1_start_timer(s);
-            }
-            ret = statem_do_write(s);
-            if (ret <= 0) {
-                return SUB_STATE_ERROR;
-            }
-            st->write_state = WRITE_STATE_POST_WORK;
-            st->write_state_work = WORK_MORE_A;
-            /* Fall through */
-
-        case WRITE_STATE_POST_WORK:
-//            printf("WRITE_STATE_POST_WORK in write_state_machine func \n");
-            switch (st->write_state_work = post_work(s, st->write_state_work)) {
-            case WORK_ERROR:
-                check_fatal(s);
                 /* Fall through */
-            case WORK_MORE_A:
-            case WORK_MORE_B:
-            case WORK_MORE_C:
-                return SUB_STATE_ERROR;
 
-            case WORK_FINISHED_CONTINUE:
+            case WRITE_STATE_POST_WORK:
+//            printf("WRITE_STATE_POST_WORK in write_state_machine func \n");
+                switch (st->write_state_work = post_work(s, st->write_state_work)) {
+                    case WORK_ERROR:
+                        check_fatal(s);
+                        /* Fall through */
+                    case WORK_MORE_A:
+                    case WORK_MORE_B:
+                    case WORK_MORE_C:
+                        return SUB_STATE_ERROR;
+
+                    case WORK_FINISHED_CONTINUE:
 //                printf("WRITE_FINSIHED_CONTINUE in write_state_machine func \n");
-                st->write_state = WRITE_STATE_TRANSITION;
+                        st->write_state = WRITE_STATE_TRANSITION;
+                        break;
+
+                    case WORK_FINISHED_STOP:
+                        return SUB_STATE_END_HANDSHAKE;
+                }
                 break;
 
-            case WORK_FINISHED_STOP:
-                return SUB_STATE_END_HANDSHAKE;
-            }
-            break;
-
-        default:
-            SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-            return SUB_STATE_ERROR;
+            default:
+                SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+                return SUB_STATE_ERROR;
         }
     }
 }
-static SUB_STATE_RETURN write_state_machine_reduce(SSL *s)
-{
+
+static SUB_STATE_RETURN write_state_machine_reduce(SSL *s) {
     OSSL_STATEM *st = &s->statem;
     int ret;
-    WRITE_TRAN(*transition) (SSL *s);
-    WORK_STATE(*pre_work) (SSL *s, WORK_STATE wst);
-    WORK_STATE(*post_work) (SSL *s, WORK_STATE wst);
-    int (*get_construct_message_f) (SSL *s, WPACKET *pkt,
-            int (**confunc) (SSL *s, WPACKET *pkt),
-            int *mt);
-    void (*cb) (const SSL *ssl, int type, int val) = NULL;
-    int (*confunc) (SSL *s, WPACKET *pkt);
+    WRITE_TRAN (*transition)(SSL *s);
+    WORK_STATE (*pre_work)(SSL *s, WORK_STATE wst);
+    WORK_STATE (*post_work)(SSL *s, WORK_STATE wst);
+    int (*get_construct_message_f)(SSL *s, WPACKET *pkt,
+                                   int (**confunc)(SSL *s, WPACKET *pkt),
+                                   int *mt);
+    void (*cb)(const SSL *ssl, int type, int val) = NULL;
+    int (*confunc)(SSL *s, WPACKET *pkt);
     int mt;
     WPACKET pkt;
 
@@ -1423,7 +1405,7 @@ static SUB_STATE_RETURN write_state_machine_reduce(SSL *s)
         pre_work = ossl_statem_server_pre_work_reduce;
         post_work = ossl_statem_server_post_work_reduce;
         get_construct_message_f = ossl_statem_server_construct_message;
-    } else if(!s->server){
+    } else if (!s->server) {
         printf("not using dns\n");
         transition = ossl_statem_client_write_transition_reduce;
         pre_work = ossl_statem_client_pre_work_reduce;
@@ -1449,112 +1431,112 @@ static SUB_STATE_RETURN write_state_machine_reduce(SSL *s)
                         st->write_state_work = WORK_MORE_A;
                         break;
 
-                        case WRITE_TRAN_FINISHED:
-                            //                printf("transition(s) is WRITE_TRAN_FINISHED in write_state_machine func \n");
-                            return SUB_STATE_FINISHED;
-                            break;
+                    case WRITE_TRAN_FINISHED:
+                                        printf("transition(s) is WRITE_TRAN_FINISHED in write_state_machine func \n");
+                        return SUB_STATE_FINISHED;
+                        break;
 
-                            case WRITE_TRAN_ERROR:
-                                check_fatal(s);
-                                return SUB_STATE_ERROR;
+                    case WRITE_TRAN_ERROR:
+                        check_fatal(s);
+                        return SUB_STATE_ERROR;
                 }
                 break;
 
-                case WRITE_STATE_PRE_WORK:
-                    //            printf("WRITE_STATE_PRE_WORK in write_state_machine func \n");
-                    switch (st->write_state_work = pre_work(s, st->write_state_work)) {
-                        case WORK_ERROR:
-                            check_fatal(s);
-                            /* Fall through */
-                            case WORK_MORE_A:
-                                case WORK_MORE_B:
-                                    case WORK_MORE_C:
-                                        return SUB_STATE_ERROR;
-
-                                        case WORK_FINISHED_CONTINUE:
-                                            //                printf("WRITE_FINISHED_CONTINUE in write_state_machine func \n");
-                                            st->write_state = WRITE_STATE_SEND;
-                                            break;
-
-                                            case WORK_FINISHED_STOP:
-                                                return SUB_STATE_END_HANDSHAKE;
-                    }
-                    if (!get_construct_message_f(s, &pkt, &confunc, &mt)) {
-                        /* SSLfatal() already called */
-                        return SUB_STATE_ERROR;
-                    }
-                    if (mt == SSL3_MT_DUMMY) {
-                        /* Skip construction and sending. This isn't a "real" state */
-                        st->write_state = WRITE_STATE_POST_WORK;
-                        st->write_state_work = WORK_MORE_A;
-                        break;
-                    }
-                    if (!WPACKET_init(&pkt, s->init_buf)
-                    || !ssl_set_handshake_header(s, &pkt, mt)) {
-                        WPACKET_cleanup(&pkt);
-                        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-                        return SUB_STATE_ERROR;
-                    }
-                    if (confunc != NULL && !confunc(s, &pkt)) {
-                        WPACKET_cleanup(&pkt);
+            case WRITE_STATE_PRE_WORK:
+                //            printf("WRITE_STATE_PRE_WORK in write_state_machine func \n");
+                switch (st->write_state_work = pre_work(s, st->write_state_work)) {
+                    case WORK_ERROR:
                         check_fatal(s);
-                        return SUB_STATE_ERROR;
-                    }
-                    if (!ssl_close_construct_packet(s, &pkt, mt)
-                    || !WPACKET_finish(&pkt)) {
-                        WPACKET_cleanup(&pkt);
-                        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-                        return SUB_STATE_ERROR;
-                    }
-
-                    /* Fall through */
-
-                    case WRITE_STATE_SEND:
-                        printf("    (write_state_machine) hand_state -> %s\n", SSL_state_string_long(s));
-                        //            printf("WRITE_STATE_SEND in write_state_machine func \n");
-                        if (SSL_IS_DTLS(s) && st->use_timer) {
-                            dtls1_start_timer(s);
-                        }
-                        ret = statem_do_write(s);
-                        if (ret <= 0) {
-                            return SUB_STATE_ERROR;
-                        }
-                        st->write_state = WRITE_STATE_POST_WORK;
-                        st->write_state_work = WORK_MORE_A;
                         /* Fall through */
+                    case WORK_MORE_A:
+                    case WORK_MORE_B:
+                    case WORK_MORE_C:
+                        return SUB_STATE_ERROR;
 
-                        case WRITE_STATE_POST_WORK:
-                            //            printf("WRITE_STATE_POST_WORK in write_state_machine func \n");
-                            switch (st->write_state_work = post_work(s, st->write_state_work)) {
-                                case WORK_ERROR:
-                                    check_fatal(s);
-                                    /* Fall through */
-                                    case WORK_MORE_A:
-                                        case WORK_MORE_B:
-                                            case WORK_MORE_C:
-                                                return SUB_STATE_ERROR;
+                    case WORK_FINISHED_CONTINUE:
+                        //                printf("WRITE_FINISHED_CONTINUE in write_state_machine func \n");
+                        st->write_state = WRITE_STATE_SEND;
+                        break;
 
-                                                case WORK_FINISHED_CONTINUE:
-                                                    //                printf("WRITE_FINSIHED_CONTINUE in write_state_machine func \n");
-                                                    st->write_state = WRITE_STATE_TRANSITION;
-                                                    break;
+                    case WORK_FINISHED_STOP:
+                        return SUB_STATE_END_HANDSHAKE;
+                }
+                if (!get_construct_message_f(s, &pkt, &confunc, &mt)) {
+                    /* SSLfatal() already called */
+                    return SUB_STATE_ERROR;
+                }
+                if (mt == SSL3_MT_DUMMY) {
+                    /* Skip construction and sending. This isn't a "real" state */
+                    st->write_state = WRITE_STATE_POST_WORK;
+                    st->write_state_work = WORK_MORE_A;
+                    break;
+                }
+                if (!WPACKET_init(&pkt, s->init_buf)
+                    || !ssl_set_handshake_header(s, &pkt, mt)) {
+                    WPACKET_cleanup(&pkt);
+                    SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+                    return SUB_STATE_ERROR;
+                }
+                if (confunc != NULL && !confunc(s, &pkt)) {
+                    WPACKET_cleanup(&pkt);
+                    check_fatal(s);
+                    return SUB_STATE_ERROR;
+                }
+                if (!ssl_close_construct_packet(s, &pkt, mt)
+                    || !WPACKET_finish(&pkt)) {
+                    WPACKET_cleanup(&pkt);
+                    SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+                    return SUB_STATE_ERROR;
+                }
 
-                                                    case WORK_FINISHED_STOP:
-                                                        return SUB_STATE_END_HANDSHAKE;
-                            }
-                            break;
+                /* Fall through */
 
-                        default:
-                            SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-                            return SUB_STATE_ERROR;
+            case WRITE_STATE_SEND:
+                printf("    (write_state_machine) hand_state -> %s\n", SSL_state_string_long(s));
+                //            printf("WRITE_STATE_SEND in write_state_machine func \n");
+                if (SSL_IS_DTLS(s) && st->use_timer) {
+                    dtls1_start_timer(s);
+                }
+                ret = statem_do_write(s);
+                if (ret <= 0) {
+                    return SUB_STATE_ERROR;
+                }
+                st->write_state = WRITE_STATE_POST_WORK;
+                st->write_state_work = WORK_MORE_A;
+                /* Fall through */
+
+            case WRITE_STATE_POST_WORK:
+                //            printf("WRITE_STATE_POST_WORK in write_state_machine func \n");
+                switch (st->write_state_work = post_work(s, st->write_state_work)) {
+                    case WORK_ERROR:
+                        check_fatal(s);
+                        /* Fall through */
+                    case WORK_MORE_A:
+                    case WORK_MORE_B:
+                    case WORK_MORE_C:
+                        return SUB_STATE_ERROR;
+
+                    case WORK_FINISHED_CONTINUE:
+                        //                printf("WRITE_FINSIHED_CONTINUE in write_state_machine func \n");
+                        st->write_state = WRITE_STATE_TRANSITION;
+                        break;
+
+                    case WORK_FINISHED_STOP:
+                        return SUB_STATE_END_HANDSHAKE;
+                }
+                break;
+
+            default:
+                SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+                return SUB_STATE_ERROR;
         }
     }
 }
+
 /*
  * Flush the write BIO
  */
-int statem_flush(SSL *s)
-{
+int statem_flush(SSL *s) {
     s->rwstate = SSL_WRITING;
     if (BIO_flush(s->wbio) <= 0) {
         return 0;
@@ -1572,8 +1554,7 @@ int statem_flush(SSL *s)
  *   1: Yes (application data allowed)
  *   0: No (application data not allowed)
  */
-int ossl_statem_app_data_allowed(SSL *s)
-{
+int ossl_statem_app_data_allowed(SSL *s) {
     OSSL_STATEM *st = &s->statem;
 
     if (st->state == MSG_FLOW_UNINITED)
@@ -1606,8 +1587,7 @@ int ossl_statem_app_data_allowed(SSL *s)
  * This function returns 1 if TLS exporter is ready to export keying
  * material, or 0 if otherwise.
  */
-int ossl_statem_export_allowed(SSL *s)
-{
+int ossl_statem_export_allowed(SSL *s) {
     return s->s3.previous_server_finished_len != 0
            && s->statem.hand_state != TLS_ST_SW_FINISHED;
 }
@@ -1616,8 +1596,7 @@ int ossl_statem_export_allowed(SSL *s)
  * Return 1 if early TLS exporter is ready to export keying material,
  * or 0 if otherwise.
  */
-int ossl_statem_export_early_allowed(SSL *s)
-{
+int ossl_statem_export_early_allowed(SSL *s) {
     /*
      * The early exporter secret is only present on the server if we
      * have accepted early_data. It is present on the client as long

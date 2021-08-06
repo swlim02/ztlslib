@@ -982,7 +982,8 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
                     st->hand_state = TLS_ST_CW_FINISHED;
 #endif
             }
-            return WRITE_TRAN_CONTINUE;
+            st->hand_state = TLS_ST_CR_CHANGE;
+            return WRITE_TRAN_FINISHED;
 
 #if !defined(OPENSSL_NO_NEXTPROTONEG)
         case TLS_ST_CW_NEXT_PROTO:
@@ -1308,8 +1309,10 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
             break;
 
         case TLS_ST_CW_CLNT_HELLO:
+
             if (s->early_data_state == SSL_EARLY_DATA_CONNECTING
                 && s->max_early_data > 0) {
+                printf("start early\n");
                 /*
                  * We haven't selected TLSv1.3 yet so we don't call the change
                  * cipher state function associated with the SSL_METHOD. Instead
@@ -1323,37 +1326,24 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                     }
                 }
                 /* else we're in compat mode so we delay flushing until after CCS */
-            } else if (!statem_flush(s)) {
-                return WORK_MORE_A;
             }
+//            else if (!statem_flush(s)) {
+//                return WORK_MORE_A;
+//            }
 
             if (SSL_IS_DTLS(s)) {
                 /* Treat the next message as the first packet */
                 s->first_packet = 1;
             }
+//            exit(1);
             break;
-
-        case TLS_ST_CW_END_OF_EARLY_DATA:
-            /*
-             * We set the enc_write_ctx back to NULL because we may end up writing
-             * in cleartext again if we get a HelloRetryRequest from the server.
-             */
-            EVP_CIPHER_CTX_free(s->enc_write_ctx);
-            s->enc_write_ctx = NULL;
-            break;
-
-        case TLS_ST_CW_KEY_EXCH:
-            if (tls_client_key_exchange_post_work(s) == 0) {
-                /* SSLfatal() already called */
-                return WORK_ERROR;
-            }
-            break;
-
+            // FALL DOWN
         case TLS_ST_CW_CHANGE:
             if (SSL_IS_TLS13(s) || s->hello_retry_request == SSL_HRR_PENDING)
                 break;
             if (s->early_data_state == SSL_EARLY_DATA_CONNECTING
                 && s->max_early_data > 0) {
+                printf("early start\n");
                 /*
                  * We haven't selected TLSv1.3 yet so we don't call the change
                  * cipher state function associated with the SSL_METHOD. Instead
@@ -1364,8 +1354,11 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                     return WORK_ERROR;
                 break;
             }
-            s->s3.tmp.new_cipher = SSL_CIPHER_find(s, (const unsigned char *)"\x13\x02");
+            // add s->version = TLS13
+            s->s3.tmp.new_cipher = SSL_CIPHER_find(s, (const unsigned char *) "\x13\x02");
             s->session->cipher = s->s3.tmp.new_cipher;
+            s->s3.group_id = 0x001d;
+            s->session->kex_group = s->s3.group_id;
 #ifdef OPENSSL_NO_COMP
             s->session->compress_meth = 0;
 #else
@@ -1375,43 +1368,50 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 s->session->compress_meth = s->s3.tmp.new_compression->id;
 #endif
             EVP_PKEY *ckey = s->s3.tmp.pkey, *skey = NULL;
-            FILE* f;
+            FILE *f;
             f = fopen("pubKey.pem", "rb");
             PEM_read_PUBKEY(f, &skey, NULL, NULL);
             fclose(f);
 
             BIO *bp = BIO_new_fp(stdout, BIO_NOCLOSE);
-            if(!EVP_PKEY_print_public(bp, skey, 1, NULL))
-            {
+            if (!EVP_PKEY_print_public(bp, skey, 1, NULL)) {
                 printf("error5\n");
             }
 
-            if(!EVP_PKEY_print_public(bp, ckey, 1, NULL))
-            {
+            if (!EVP_PKEY_print_public(bp, ckey, 1, NULL)) {
                 printf("error5\n");
             }
             BIO_free(bp);
 
-            s->s3.group_id = 0x001d;
-            s->session->kex_group = s->s3.group_id;
-            printf("ssl_get_algorithm2 : %ld\n", ssl_get_algorithm2(s));
-            printf("debug 1\n");
+
+//            printf("ssl_get_algorithm2 : %ld\n", ssl_get_algorithm2(s));
+//            printf("debug 1\n");
             // 사전 조건을 찾아보자...
             if (ssl_derive(s, ckey, skey, 1) == 0) {
                 /* SSLfatal() already called */
                 EVP_PKEY_free(skey);
                 return 0;
             }
-            printf("debug 2\n");
+//            printf("debug 2\n");
             s->s3.peer_tmp = skey;
 
-            char message[100] = "hello";
-            SSL_write(s, message, 5); // problem : message가 encrypt 되어 가지 않는다.
 
             if (!s->method->ssl3_enc->setup_key_block(s)) {
                 /* SSLfatal() already called */
                 return WORK_ERROR;
             }
+            size_t dummy;
+            if (!s->method->ssl3_enc->generate_master_secret(s,
+                                                             s->master_secret, s->handshake_secret, 0,
+                                                             &dummy)
+                || !s->method->ssl3_enc->change_cipher_state(s,
+                                                             SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_WRITE))
+                /* SSLfatal() already called */
+                return WORK_ERROR;
+
+
+            char message[100] = "hello";
+            SSL_write(s, message, 5); // problem : message가 encrypt 되어 가지 않는다.
 
             if (!s->method->ssl3_enc->change_cipher_state(s,
                                                           SSL3_CHANGE_CIPHER_CLIENT_WRITE)) {
@@ -1432,6 +1432,25 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
 #endif
 
                 dtls1_reset_seq_numbers(s, SSL3_CC_WRITE);
+            }
+
+            if(!statem_flush(s)){
+                return WORK_MORE_A;
+            }
+            break;
+        case TLS_ST_CW_END_OF_EARLY_DATA:
+            /*
+             * We set the enc_write_ctx back to NULL because we may end up writing
+             * in cleartext again if we get a HelloRetryRequest from the server.
+             */
+            EVP_CIPHER_CTX_free(s->enc_write_ctx);
+            s->enc_write_ctx = NULL;
+            break;
+
+        case TLS_ST_CW_KEY_EXCH:
+            if (tls_client_key_exchange_post_work(s) == 0) {
+                /* SSLfatal() already called */
+                return WORK_ERROR;
             }
             break;
 
