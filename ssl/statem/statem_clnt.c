@@ -1373,20 +1373,19 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
             PEM_read_PUBKEY(f, &skey, NULL, NULL);
             fclose(f);
 
-            BIO *bp = BIO_new_fp(stdout, BIO_NOCLOSE);
-            if (!EVP_PKEY_print_public(bp, skey, 1, NULL)) {
-                printf("error5\n");
-            }
-
-            if (!EVP_PKEY_print_public(bp, ckey, 1, NULL)) {
-                printf("error5\n");
-            }
-            BIO_free(bp);
+//            BIO *bp = BIO_new_fp(stdout, BIO_NOCLOSE);
+//            if (!EVP_PKEY_print_public(bp, skey, 1, NULL)) {
+//                printf("error5\n");
+//            }
+//
+//            if (!EVP_PKEY_print_public(bp, ckey, 1, NULL)) {
+//                printf("error5\n");
+//            }
+//            BIO_free(bp);
 
 
 //            printf("ssl_get_algorithm2 : %ld\n", ssl_get_algorithm2(s));
 //            printf("debug 1\n");
-            // 사전 조건을 찾아보자...
             if (ssl_derive(s, ckey, skey, 1) == 0) {
                 /* SSLfatal() already called */
                 EVP_PKEY_free(skey);
@@ -1400,25 +1399,30 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 /* SSLfatal() already called */
                 return WORK_ERROR;
             }
+
             size_t dummy;
             if (!s->method->ssl3_enc->generate_master_secret(s,
                                                              s->master_secret, s->handshake_secret, 0,
                                                              &dummy)
-                || !s->method->ssl3_enc->change_cipher_state(s,
-                                                             SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_WRITE))
+                                                             || !tls13_change_cipher_state(s,
+                                                             SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_WRITE))
                 /* SSLfatal() already called */
                 return WORK_ERROR;
-
+            dumpString(s->handshake_traffic_hash, "hth");
+            dumpString(s->handshake_secret, "hs");
+            dumpString(s->master_secret, "ms");
 
             char message[100] = "hello";
             SSL_write(s, message, 5); // problem : message가 encrypt 되어 가지 않는다.
-
-            if (!s->method->ssl3_enc->change_cipher_state(s,
-                                                          SSL3_CHANGE_CIPHER_CLIENT_WRITE)) {
+            if ((!s->method->ssl3_enc->setup_key_block(s)
+            || !tls13_change_cipher_state(s,
+                                                         SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ))) {
                 /* SSLfatal() already called */
                 return WORK_ERROR;
             }
-
+            dumpString(s->handshake_traffic_hash, "hth");
+            dumpString(s->handshake_secret, "hs");
+            dumpString(s->master_secret, "ms");
             if (SSL_IS_DTLS(s)) {
 #ifndef OPENSSL_NO_SCTP
                 if (s->hit) {
@@ -2324,6 +2328,7 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt) {
      * In TLSv1.3 we have some post-processing to change cipher state, otherwise
      * we're done with this message
      */
+
     if (SSL_IS_TLS13(s)
         && (!s->method->ssl3_enc->setup_key_block(s)
             || !s->method->ssl3_enc->change_cipher_state(s,
@@ -2331,6 +2336,9 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt) {
         /* SSLfatal() already called */
         goto err;
     }
+    dumpString(s->handshake_traffic_hash, "hth");
+    dumpString(s->handshake_secret, "hs");
+    dumpString(s->master_secret, "ms");
 
     OPENSSL_free(extensions);
     return MSG_PROCESS_CONTINUE_READING;

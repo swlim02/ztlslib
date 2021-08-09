@@ -913,7 +913,8 @@ static SUB_STATE_RETURN read_state_machine(SSL *s) {
                     SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
                     return SUB_STATE_ERROR;
                 }
-                printf("           before process message: %s\n",SSL_state_string_long(s));
+                printf("           before process message: %s\n",
+                                                    SSL_state_string_long(s));
                 ret = process_message(s, &pkt);
 
                 /* Discard the packet data */
@@ -1082,7 +1083,7 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                     SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
                     return SUB_STATE_ERROR;
                 }
-                printf("           before process message: %s",SSL_state_string_long(s));
+                printf("           before process message: %s\n",SSL_state_string_long(s));
                 ret = process_message(s, &pkt);
 
                 /* Discard the packet data */

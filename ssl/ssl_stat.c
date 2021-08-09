@@ -10,7 +10,14 @@
 
 #include <stdio.h>
 #include "ssl_local.h"
+void dumpString(unsigned char *s, char *name) {
+    size_t arraySize = strlen(s) + 1;
 
+    printf("%s : 0x", name);
+    for (size_t i = 0; i < arraySize; i++)
+        printf("%02X", *(s+i));
+    printf("\n");
+}
 const char *SSL_state_string_long(const SSL *s)
 {
     if (ossl_statem_in_error(s))

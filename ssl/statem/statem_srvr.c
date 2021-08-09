@@ -54,7 +54,7 @@ static int tls_construct_encrypted_extensions(SSL *s, WPACKET *pkt);
  * Return values are 1 for success (transition allowed) and  0 on error
  * (transition not allowed)
  */
-    static int ossl_statem_server13_read_transition(SSL *s, int mt) {
+static int ossl_statem_server13_read_transition(SSL *s, int mt) {
     OSSL_STATEM *st = &s->statem;
 
     /*
@@ -324,12 +324,13 @@ int ossl_statem_server_read_transition_reduce(SSL
     OSSL_STATEM *st = &s->statem;
 
     if (SSL_IS_TLS13(s)) {
-        if (!
-                ossl_statem_server13_read_transition(s, mt
-                ))
+        printf("(ossl_statem_reduce) tls13 now\n");
+        if (!ossl_statem_server13_read_transition(s, mt))
             goto
                     err;
         return 1;
+    } else {
+        printf("(ossl_statem_reduce) no tls13 now\n");
     }
 
     switch (st->hand_state) {
@@ -342,8 +343,7 @@ int ossl_statem_server_read_transition_reduce(SSL
 //            printf("no handstate change ! : \n");
             if (mt == SSL3_MT_CLIENT_HELLO) {
                 printf("handstate change ! : \n");
-                st->
-                        hand_state = TLS_ST_SR_CLNT_HELLO;
+                st->hand_state = TLS_ST_SR_CLNT_HELLO;
                 return 1;
             }
             break;
@@ -1229,6 +1229,7 @@ static ossl_inline int conn_is_closed(void) {
  * Perform any work that needs to be done after sending a message from the
  * server to the client.
  */
+
 WORK_STATE ossl_statem_server_post_work(SSL *s, WORK_STATE wst) {
     OSSL_STATEM *st = &s->statem;
 
@@ -1320,7 +1321,9 @@ WORK_STATE ossl_statem_server_post_work(SSL *s, WORK_STATE wst) {
                     /* SSLfatal() already called */
                     return WORK_ERROR;
                 }
-
+                dumpString(s->handshake_traffic_hash, "hth");
+                dumpString(s->handshake_secret, "hs");
+                dumpString(s->master_secret, "ms");
                 if (s->ext.early_data != SSL_EARLY_DATA_ACCEPTED
                     && !s->method->ssl3_enc->change_cipher_state(s,
                                                                  SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_READ)) {
@@ -1518,9 +1521,12 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
                     /* SSLfatal() already called */
                     return WORK_ERROR;
                 }
-                if(s->ext.early_data != SSL_EARLY_DATA_ACCEPTED){
+                dumpString(s->handshake_traffic_hash, "hth");
+                dumpString(s->handshake_secret, "hs");
+                dumpString(s->master_secret, "ms");
+                if (s->ext.early_data != SSL_EARLY_DATA_ACCEPTED) {
                     printf("s->early_data !=\n");
-                }else{
+                } else {
                     printf("not s->early_data\n");
                 }
                 if (s->ext.early_data != SSL_EARLY_DATA_ACCEPTED
@@ -2975,8 +2981,11 @@ WORK_STATE tls_post_process_client_hello(SSL *s, WORK_STATE wst) {
 
 WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
     const SSL_CIPHER *cipher;
+    int BUF_SIZE = 10;
+    char buf[BUF_SIZE];
 
     if (wst == WORK_MORE_A) {
+        printf("work more a\n");
         int rv = tls_early_post_process_client_hello(s);
         if (rv == 0) {
             /* SSLfatal() was already called */
@@ -2987,7 +2996,9 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
         wst = WORK_MORE_B;
     }
     if (wst == WORK_MORE_B) {
+        printf("work more b\n");
         if (!s->hit || SSL_IS_TLS13(s)) {
+            printf("work more b scope\n");
             /* Let cert callback update server certificates if required */
             if (!s->hit && s->cert->cert_cb != NULL) {
                 int rv = s->cert->cert_cb(s, s->cert->cert_cb_arg);
@@ -3069,6 +3080,7 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
     }
 #ifndef OPENSSL_NO_SRP
     if (wst == WORK_MORE_C) {
+        printf("work more c\n");
         int ret;
         if ((ret = ssl_check_srp_ext_ClientHello(s)) == 0) {
             /*
@@ -3083,8 +3095,10 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
         }
     }
 #endif
+    printf("work more finish\n");
 
-    return WORK_FINISHED_CONTINUE;
+
+    return WORK_FINISHED_STOP;
     err:
     return WORK_ERROR;
 }
