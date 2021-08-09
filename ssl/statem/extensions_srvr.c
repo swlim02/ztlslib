@@ -1711,6 +1711,28 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
             /* SSLfatal() already called */
             return EXT_RETURN_FAIL;
         }
+
+        printf("hth client hello\n");
+        if (!s->method->ssl3_enc->setup_key_block(s)
+    || !s->method->ssl3_enc->change_cipher_state(s,
+                                                 SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
+            /* SSLfatal() already called */
+            return EXT_RETURN_FAIL;
+        }
+        dumpString(s->handshake_traffic_hash, "hth");
+        dumpString(s->handshake_secret, "hs");
+        dumpString(s->master_secret, "ms");
+        size_t dummy;
+        if (!s->method->ssl3_enc->generate_master_secret(s,
+                                                         s->master_secret, s->handshake_secret, 0,
+                                                         &dummy)
+                                                             || !tls13_change_cipher_state(s,
+                                                                                           SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_WRITE))
+            /* SSLfatal() already called */
+            return EXT_RETURN_FAIL;
+        dumpString(s->handshake_traffic_hash, "hth");
+        dumpString(s->handshake_secret, "hs");
+        dumpString(s->master_secret, "ms");
     } else {
         /* KEM mode */
         printf("    KEM mode\n");

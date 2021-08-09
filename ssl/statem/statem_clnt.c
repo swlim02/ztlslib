@@ -1354,6 +1354,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                     return WORK_ERROR;
                 break;
             }
+
             // add s->version = TLS13
             s->s3.tmp.new_cipher = SSL_CIPHER_find(s, (const unsigned char *) "\x13\x02");
             s->session->cipher = s->s3.tmp.new_cipher;
@@ -1391,14 +1392,27 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 EVP_PKEY_free(skey);
                 return 0;
             }
+            dumpString(s->handshake_traffic_hash, "hth");
+            dumpString(s->handshake_secret, "hs");
+            dumpString(s->master_secret, "ms");
+//            printf("debug 2\n");
 //            printf("debug 2\n");
             s->s3.peer_tmp = skey;
 
-
-            if (!s->method->ssl3_enc->setup_key_block(s)) {
+            if ((!s->method->ssl3_enc->setup_key_block(s)
+            || !tls13_change_cipher_state(s,
+                                          SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ))) {
                 /* SSLfatal() already called */
                 return WORK_ERROR;
             }
+            dumpString(s->handshake_traffic_hash, "hth");
+            dumpString(s->handshake_secret, "hs");
+            dumpString(s->master_secret, "ms");
+
+//            if (!s->method->ssl3_enc->setup_key_block(s)) {
+//                /* SSLfatal() already called */
+//                return WORK_ERROR;
+//            }
 
             size_t dummy;
             if (!s->method->ssl3_enc->generate_master_secret(s,
@@ -1423,6 +1437,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
             dumpString(s->handshake_traffic_hash, "hth");
             dumpString(s->handshake_secret, "hs");
             dumpString(s->master_secret, "ms");
+
             if (SSL_IS_DTLS(s)) {
 #ifndef OPENSSL_NO_SCTP
                 if (s->hit) {

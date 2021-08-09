@@ -1438,6 +1438,7 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
     switch (st->hand_state) {
         default:
             /* No post work to be done */
+
             break;
 
         case TLS_ST_SW_HELLO_REQ:
@@ -1535,6 +1536,9 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
                     /* SSLfatal() already called */
                     return WORK_ERROR;
                 }
+                dumpString(s->handshake_traffic_hash, "hth");
+                dumpString(s->handshake_secret, "hs");
+                dumpString(s->master_secret, "ms");
                 /*
                  * We don't yet know whether the next record we are going to receive
                  * is an unencrypted alert, an encrypted alert, or an encrypted
@@ -3095,6 +3099,7 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
         }
     }
 #endif
+
     printf("work more finish\n");
 
 
