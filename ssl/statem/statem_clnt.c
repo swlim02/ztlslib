@@ -1312,7 +1312,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
 
             if (s->early_data_state == SSL_EARLY_DATA_CONNECTING
                 && s->max_early_data > 0) {
-                printf("start early\n");
+//                printf("start early\n");
                 /*
                  * We haven't selected TLSv1.3 yet so we don't call the change
                  * cipher state function associated with the SSL_METHOD. Instead
@@ -1355,11 +1355,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 break;
             }
 
-            // add s->version = TLS13
-            s->s3.tmp.new_cipher = SSL_CIPHER_find(s, (const unsigned char *) "\x13\x02");
-            s->session->cipher = s->s3.tmp.new_cipher;
-            s->s3.group_id = 0x001d;
-            s->session->kex_group = s->s3.group_id;
+
 #ifdef OPENSSL_NO_COMP
             s->session->compress_meth = 0;
 #else
@@ -1368,12 +1364,20 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
             else
                 s->session->compress_meth = s->s3.tmp.new_compression->id;
 #endif
+            // setting for tls13 change cipher spec
+            s->s3.tmp.new_cipher = SSL_CIPHER_find(s, (const unsigned char *) "\x13\x02");
+            s->session->cipher = s->s3.tmp.new_cipher;
+            s->s3.group_id = 0x001d;
+            s->session->kex_group = s->s3.group_id;
+
+            // assign client's ecdhe private key and server public key
             EVP_PKEY *ckey = s->s3.tmp.pkey, *skey = NULL;
             FILE *f;
             f = fopen("pubKey.pem", "rb");
             PEM_read_PUBKEY(f, &skey, NULL, NULL);
             fclose(f);
 
+            // print keys
 //            BIO *bp = BIO_new_fp(stdout, BIO_NOCLOSE);
 //            if (!EVP_PKEY_print_public(bp, skey, 1, NULL)) {
 //                printf("error5\n");
@@ -1385,26 +1389,28 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
 //            BIO_free(bp);
 
 
-//            printf("ssl_get_algorithm2 : %ld\n", ssl_get_algorithm2(s));
-//            printf("debug 1\n");
+            // derive handshake secret
             if (ssl_derive(s, ckey, skey, 1) == 0) {
                 /* SSLfatal() already called */
                 EVP_PKEY_free(skey);
                 return 0;
             }
+            // print handshake parameter
             dumpString(s->handshake_traffic_hash, "hth");
             dumpString(s->handshake_secret, "hs");
             dumpString(s->master_secret, "ms");
-//            printf("debug 2\n");
-//            printf("debug 2\n");
+
+            // set server's ecdhe public key
             s->s3.peer_tmp = skey;
 
+            // first ccs : server handshake traffic secret
             if ((!s->method->ssl3_enc->setup_key_block(s)
                  || !tls13_change_cipher_state(s,
                                                SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ))) {
                 /* SSLfatal() already called */
                 return WORK_ERROR;
             }
+            // print handshake parameter
             dumpString(s->handshake_traffic_hash, "hth");
             dumpString(s->handshake_secret, "hs");
             dumpString(s->master_secret, "ms");
@@ -1414,6 +1420,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
 //                return WORK_ERROR;
 //            }
 
+            // second ccs : client traffic secret 0
             size_t dummy;
             if (!tls13_generate_master_secret(s,
                                               s->master_secret, s->handshake_secret, 0,
@@ -1422,18 +1429,23 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                                               SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_WRITE))
                 /* SSLfatal() already called */
                 return WORK_ERROR;
+            // print handshake parameter
             dumpString(s->handshake_traffic_hash, "hth");
             dumpString(s->handshake_secret, "hs");
             dumpString(s->master_secret, "ms");
 
+            // send application data encrypted by client traffic key
             char message[100] = "hello";
             SSL_write(s, message, 5); // problem : message가 encrypt 되어 가지 않는다.
+
+            // third ccs : server handshake traffic secret
             if ((!s->method->ssl3_enc->setup_key_block(s)
                  || !tls13_change_cipher_state(s,
                                                SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ))) {
                 /* SSLfatal() already called */
                 return WORK_ERROR;
             }
+            // print handshake parameter
             dumpString(s->handshake_traffic_hash, "hth");
             dumpString(s->handshake_secret, "hs");
             dumpString(s->master_secret, "ms");
@@ -1453,6 +1465,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 dtls1_reset_seq_numbers(s, SSL3_CC_WRITE);
             }
 
+            // real send
             if (!statem_flush(s)) {
                 return WORK_MORE_A;
             }
