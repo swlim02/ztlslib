@@ -1343,7 +1343,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 break;
             if (s->early_data_state == SSL_EARLY_DATA_CONNECTING
                 && s->max_early_data > 0) {
-                printf("early start\n");
+//                printf("early start\n");
                 /*
                  * We haven't selected TLSv1.3 yet so we don't call the change
                  * cipher state function associated with the SSL_METHOD. Instead
@@ -1400,8 +1400,8 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
             s->s3.peer_tmp = skey;
 
             if ((!s->method->ssl3_enc->setup_key_block(s)
-            || !tls13_change_cipher_state(s,
-                                          SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ))) {
+                 || !tls13_change_cipher_state(s,
+                                               SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ))) {
                 /* SSLfatal() already called */
                 return WORK_ERROR;
             }
@@ -1415,11 +1415,11 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
 //            }
 
             size_t dummy;
-            if (!s->method->ssl3_enc->generate_master_secret(s,
-                                                             s->master_secret, s->handshake_secret, 0,
-                                                             &dummy)
-                                                             || !tls13_change_cipher_state(s,
-                                                             SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_WRITE))
+            if (!tls13_generate_master_secret(s,
+                                              s->master_secret, s->handshake_secret, 0,
+                                              &dummy)
+                || !tls13_change_cipher_state(s,
+                                              SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_WRITE))
                 /* SSLfatal() already called */
                 return WORK_ERROR;
             dumpString(s->handshake_traffic_hash, "hth");
@@ -1429,8 +1429,8 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
             char message[100] = "hello";
             SSL_write(s, message, 5); // problem : message가 encrypt 되어 가지 않는다.
             if ((!s->method->ssl3_enc->setup_key_block(s)
-            || !tls13_change_cipher_state(s,
-                                                         SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ))) {
+                 || !tls13_change_cipher_state(s,
+                                               SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ))) {
                 /* SSLfatal() already called */
                 return WORK_ERROR;
             }
@@ -1453,7 +1453,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 dtls1_reset_seq_numbers(s, SSL3_CC_WRITE);
             }
 
-            if(!statem_flush(s)){
+            if (!statem_flush(s)) {
                 return WORK_MORE_A;
             }
             break;

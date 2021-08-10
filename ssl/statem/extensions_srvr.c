@@ -1667,20 +1667,21 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
 //        PEM_write_PrivateKey(stdout, skey, NULL, NULL, 0, NULL, NULL);
 //        PEM_write_PrivateKey(stdout, rdkey, NULL, NULL, 0, NULL, NULL);
 
-        BIO *bp = BIO_new_fp(stdout, BIO_NOCLOSE);
-
-        if(!EVP_PKEY_print_private(bp, skey, 1, NULL))
-        {
-            printf("error5\n");
-        }
+//        BIO *bp = BIO_new_fp(stdout, BIO_NOCLOSE);
+//
+//        if(!EVP_PKEY_print_private(bp, skey, 1, NULL))
+//        {
+//            printf("error5\n");
+//        }
+//        BIO_free(bp);
 //        if(!EVP_PKEY_print_private(bp, rdkey, 1, NULL))
 //        {
 //            printf("error5\n");
 //        }
-        BIO_free(bp);
+
 
         if (skey == NULL) {
-            printf("?\n");
+//            printf("?\n");
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
             return EXT_RETURN_FAIL;
         }

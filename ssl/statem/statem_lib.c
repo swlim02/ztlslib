@@ -1164,8 +1164,8 @@ int tls_get_message_header(SSL *s, int *mt)
 
 
     p = (unsigned char *)s->init_buf->data;
-    printf("length : %zu\n", s->init_buf->length);
-    printf("p: %d\n", p[0]);
+//    printf("length : %zu\n", s->init_buf->length);
+//    printf("p: %d\n", p[0]);
 
     do {
         while (s->init_num < SSL3_HM_HEADER_LENGTH) {
@@ -1216,7 +1216,7 @@ int tls_get_message_header(SSL *s, int *mt)
         }
 
         skip_message = 0;
-        printf("p: %d\n", p[0]);
+//        printf("p: %d\n", p[0]);
 
         if (!s->server)
             if (s->statem.hand_state != TLS_ST_OK
@@ -1241,8 +1241,8 @@ int tls_get_message_header(SSL *s, int *mt)
 
     *mt = *p;
     s->s3.tmp.message_type = *(p++);
-    printf("mt : %d\n", *mt);
-    printf("s3.msg type : %d\n", s->s3.tmp.message_type);
+//    printf("mt : %d\n", *mt);
+//    printf("s3.msg type : %d\n", s->s3.tmp.message_type);
 
     if (RECORD_LAYER_is_sslv2_record(&s->rlayer)) {
         /*
