@@ -375,7 +375,6 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf_, size_t len,
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_BAD_LENGTH);
         return -1;
     }
-
     if (s->early_data_state == SSL_EARLY_DATA_WRITING
             && !early_data_count_ok(s, len, 0, 1)) {
         /* SSLfatal() already called */
@@ -602,6 +601,7 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf_, size_t len,
     }
 
     for (;;) {
+
         size_t pipelens[SSL_MAX_PIPELINES], tmppipelen, remain;
         size_t numpipes, j;
 
@@ -727,7 +727,6 @@ int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
             goto err;
         }
     }
-
     /*
      * 'create_empty_fragment' is true only when this function calls itself
      */
@@ -736,7 +735,6 @@ int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
          * countermeasure against known-IV weakness in CBC ciphersuites (see
          * http://www.openssl.org/~bodo/tls-cbc.txt)
          */
-
         if (s->s3.need_empty_fragments && type == SSL3_RT_APPLICATION_DATA) {
             /*
              * recursive function call with 'create_empty_fragment' set; this
@@ -763,7 +761,6 @@ int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
 
         s->s3.empty_fragment_done = 1;
     }
-
     if (BIO_get_ktls_send(s->wbio)) {
         /*
          * ktls doesn't modify the buffer, but to avoid a warning we need to
@@ -826,7 +823,6 @@ int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
             wpinited++;
         }
     }
-
     /* Explicit IV length, block ciphers appropriate version flag */
     if (s->enc_write_ctx && SSL_USE_EXPLICIT_IV(s) && !SSL_TREAT_AS_TLS13(s)) {
         int mode = EVP_CIPHER_CTX_get_mode(s->enc_write_ctx);
@@ -931,12 +927,12 @@ int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
                 SSL3_RECORD_reset_input(&wr[j]);
             }
         }
-
         if (SSL_TREAT_AS_TLS13(s)
                 && !BIO_get_ktls_send(s->wbio)
                 && s->enc_write_ctx != NULL
                 && (s->statem.enc_write_state != ENC_WRITE_STATE_WRITE_PLAIN_ALERTS
                     || type != SSL3_RT_ALERT)) {
+
             size_t rlen, max_send_fragment;
 
             if (!WPACKET_put_bytes_u8(thispkt, type)) {
@@ -949,6 +945,7 @@ int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
             max_send_fragment = ssl_get_max_send_fragment(s);
             rlen = SSL3_RECORD_get_length(thiswr);
             if (rlen < max_send_fragment) {
+
                 size_t padding = 0;
                 size_t max_padding = max_send_fragment - rlen;
                 if (s->record_padding_cb != NULL) {
@@ -997,7 +994,6 @@ int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
                 goto err;
             }
         }
-
         /*
          * Reserve some bytes for any growth that may occur during encryption.
          * This will be at most one cipher block or the tag length if using
@@ -1023,7 +1019,6 @@ int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
             SSL3_RECORD_set_length(thiswr, len);
         }
     }
-
     if (s->statem.enc_write_state == ENC_WRITE_STATE_WRITE_PLAIN_ALERTS) {
         /*
          * We haven't actually negotiated the version yet, but we're trying to
@@ -1046,7 +1041,6 @@ int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
             }
         }
     }
-
     for (j = 0; j < numpipes; j++) {
         size_t origlen;
 
@@ -1432,9 +1426,9 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
         }
 
         if (recvd_type != NULL){
-            printf("recvd_type NULL?\n");
+//            printf("recvd_type NULL?\n");
             *recvd_type = SSL3_RECORD_get_type(rr);
-            printf("%d\n", *recvd_type);
+//            printf("%d\n", *recvd_type);
         }
 
         if (len == 0) {

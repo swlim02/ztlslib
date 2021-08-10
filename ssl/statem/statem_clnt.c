@@ -864,7 +864,7 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
      * later
      */
     if (SSL_IS_TLS13(s)) {
-        //        printf("    SSL_IS_TLS13\n");
+        printf("    SSL_IS_TLS13\n");
         return ossl_statem_client13_write_transition(s);
     }
     switch (st->hand_state) {
@@ -1299,6 +1299,7 @@ WORK_STATE ossl_statem_client_post_work(SSL *s, WORK_STATE wst) {
 }
 
 WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
+    printf("(ossl_statem_client_post_work_reduce) start\n");
     OSSL_STATEM *st = &s->statem;
 
     s->init_num = 0;
@@ -1365,6 +1366,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 s->session->compress_meth = s->s3.tmp.new_compression->id;
 #endif
             // setting for tls13 change cipher spec
+            s->method = tlsv1_3_client_method();
             s->s3.tmp.new_cipher = SSL_CIPHER_find(s, (const unsigned char *) "\x13\x02");
             s->session->cipher = s->s3.tmp.new_cipher;
             s->s3.group_id = 0x001d;
@@ -1435,20 +1437,22 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
             dumpString(s->master_secret, "ms");
 
             // send application data encrypted by client traffic key
+            // problem) do_ssl3_write returns -1;
+            printf("sending application data\n");
             char message[100] = "hello";
             SSL_write(s, message, 5); // problem : message가 encrypt 되어 가지 않는다.
 
             // third ccs : server handshake traffic secret
-            if ((!s->method->ssl3_enc->setup_key_block(s)
-                 || !tls13_change_cipher_state(s,
-                                               SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ))) {
-                /* SSLfatal() already called */
-                return WORK_ERROR;
-            }
-            // print handshake parameter
-            dumpString(s->handshake_traffic_hash, "hth");
-            dumpString(s->handshake_secret, "hs");
-            dumpString(s->master_secret, "ms");
+//            if ((!s->method->ssl3_enc->setup_key_block(s)
+//                 || !tls13_change_cipher_state(s,
+//                                               SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ))) {
+//                /* SSLfatal() already called */
+//                return WORK_ERROR;
+//            }
+//            // print handshake parameter
+//            dumpString(s->handshake_traffic_hash, "hth");
+//            dumpString(s->handshake_secret, "hs");
+//            dumpString(s->master_secret, "ms");
 
             if (SSL_IS_DTLS(s)) {
 #ifndef OPENSSL_NO_SCTP
@@ -1469,6 +1473,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
             if (!statem_flush(s)) {
                 return WORK_MORE_A;
             }
+            s->method = TLS_client_method();
             break;
         case TLS_ST_CW_END_OF_EARLY_DATA:
             /*

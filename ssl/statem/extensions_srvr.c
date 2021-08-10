@@ -1580,6 +1580,7 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
 {
     printf("Let's construct stoc key share\n");
 #ifndef OPENSSL_NO_TLS1_3
+    char buf[100];
     unsigned char *encodedPoint;
     size_t encoded_pt_len = 0;
     EVP_PKEY *ckey = s->s3.peer_tmp, *skey = NULL, *skey1 = NULL;
@@ -1734,6 +1735,7 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
         dumpString(s->handshake_traffic_hash, "hth");
         dumpString(s->handshake_secret, "hs");
         dumpString(s->master_secret, "ms");
+
     } else {
         /* KEM mode */
         printf("    KEM mode\n");

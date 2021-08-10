@@ -4421,6 +4421,7 @@ int ssl3_shutdown(SSL *s)
 
 int ssl3_write(SSL *s, const void *buf, size_t len, size_t *written)
 {
+//    printf("(ssl3_write)\n");
     clear_sys_error();
     if (s->s3.renegotiate)
         ssl3_renegotiate_check(s, 0);

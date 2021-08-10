@@ -2031,7 +2031,6 @@ int ssl_write_internal(SSL *s, const void *buf, size_t num, size_t *written)
     if ((s->mode & SSL_MODE_ASYNC) && ASYNC_get_current_job() == NULL) {
         int ret;
         struct ssl_async_args args;
-
         args.s = s;
         args.buf = (void *)buf;
         args.num = num;
@@ -2042,6 +2041,7 @@ int ssl_write_internal(SSL *s, const void *buf, size_t num, size_t *written)
         *written = s->asyncrw;
         return ret;
     } else {
+        // implement
         return s->method->ssl_write(s, buf, num, written);
     }
 }

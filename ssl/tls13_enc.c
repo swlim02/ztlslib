@@ -671,6 +671,7 @@ int tls13_change_cipher_state(SSL *s, int which)
      * Save the hash of handshakes up to now for use when we calculate the
      * client application traffic secret
      */
+//    dumpString(hashval, "hash val");
     if (label == server_application_traffic)
         memcpy(s->server_finished_hash, hashval, hashlen);
 
