@@ -143,6 +143,10 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt) {
                 return 1;
             }
             break;
+        case TLS_ST_SR_CLNT_HELLO:
+            st->hand_state = TLS_ST_SR_CHANGE;
+            return 1;
+            break;
     }
 
     /* No valid transition found */
@@ -1319,9 +1323,6 @@ WORK_STATE ossl_statem_server_post_work(SSL *s, WORK_STATE wst) {
                     /* SSLfatal() already called */
                     return WORK_ERROR;
                 }
-                dumpString(s->handshake_traffic_hash, "hth");
-                dumpString(s->handshake_secret, "hs");
-                dumpString(s->master_secret, "ms");
                 if (s->ext.early_data != SSL_EARLY_DATA_ACCEPTED
                     && !s->method->ssl3_enc->change_cipher_state(s,
                                                                  SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_READ)) {
@@ -1520,9 +1521,6 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
                     /* SSLfatal() already called */
                     return WORK_ERROR;
                 }
-                dumpString(s->handshake_traffic_hash, "hth");
-                dumpString(s->handshake_secret, "hs");
-                dumpString(s->master_secret, "ms");
                 if (s->ext.early_data != SSL_EARLY_DATA_ACCEPTED) {
                     printf("s->early_data !=\n");
                 } else {
@@ -1534,9 +1532,7 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
                     /* SSLfatal() already called */
                     return WORK_ERROR;
                 }
-                dumpString(s->handshake_traffic_hash, "hth");
-                dumpString(s->handshake_secret, "hs");
-                dumpString(s->master_secret, "ms");
+
                 /*
                  * We don't yet know whether the next record we are going to receive
                  * is an unencrypted alert, an encrypted alert, or an encrypted
@@ -2259,6 +2255,7 @@ MSG_PROCESS_RETURN tls_process_client_hello(SSL *s, PACKET *pkt) {
         /* SSLfatal already been called */
         goto err;
     }
+
     s->clienthello = clienthello;
 
     return MSG_PROCESS_CONTINUE_PROCESSING;

@@ -1714,6 +1714,9 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
             return EXT_RETURN_FAIL;
         }
 
+        // store the previous SSL*s to reset the cipher state
+        SSL tmp = *s;
+
         printf("hth client hello\n");
         if (!s->method->ssl3_enc->setup_key_block(s)
     || !s->method->ssl3_enc->change_cipher_state(s,
@@ -1721,9 +1724,6 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
             /* SSLfatal() already called */
             return EXT_RETURN_FAIL;
         }
-        dumpString(s->handshake_traffic_hash, "hth");
-        dumpString(s->handshake_secret, "hs");
-        dumpString(s->master_secret, "ms");
         size_t dummy;
         if (!s->method->ssl3_enc->generate_master_secret(s,
                                                          s->master_secret, s->handshake_secret, 0,
@@ -1732,10 +1732,12 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
                                                                                            SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_WRITE))
             /* SSLfatal() already called */
             return EXT_RETURN_FAIL;
-        dumpString(s->handshake_traffic_hash, "hth");
-        dumpString(s->handshake_secret, "hs");
-        dumpString(s->master_secret, "ms");
 
+        // load the tmp to reset the cipher state
+        printf("==============================================\n");
+        printf("Reset cipher state\n");
+        printf("==============================================\n");
+        *s = tmp;
     } else {
         /* KEM mode */
         printf("    KEM mode\n");

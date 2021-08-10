@@ -5521,6 +5521,9 @@ static int nss_keylog_int(const char *prefix,
 
     ssl->ctx->keylog_callback(ssl, (const char *)out);
     OPENSSL_clear_free(out, out_len);
+    dumpString(ssl->handshake_traffic_hash, "hth");
+    dumpString(ssl->handshake_secret, "hs");
+    dumpString(ssl->master_secret, "ms");
     return 1;
 
 }

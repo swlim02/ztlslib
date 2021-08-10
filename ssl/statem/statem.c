@@ -1062,7 +1062,7 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                 /* Fall through */
 
             case READ_STATE_BODY:
-                            printf("READ_STATE_BODY in read_state_machine func\n");
+                printf("READ_STATE_BODY in read_state_machine func\n");
                 if (SSL_IS_DTLS(s)) {
                     /*
                      * Actually we already have the body, but we give DTLS the

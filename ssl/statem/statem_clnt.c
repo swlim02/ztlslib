@@ -1397,10 +1397,6 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 EVP_PKEY_free(skey);
                 return 0;
             }
-            // print handshake parameter
-            dumpString(s->handshake_traffic_hash, "hth");
-            dumpString(s->handshake_secret, "hs");
-            dumpString(s->master_secret, "ms");
 
             // set server's ecdhe public key
             s->s3.peer_tmp = skey;
@@ -1412,10 +1408,6 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 /* SSLfatal() already called */
                 return WORK_ERROR;
             }
-            // print handshake parameter
-            dumpString(s->handshake_traffic_hash, "hth");
-            dumpString(s->handshake_secret, "hs");
-            dumpString(s->master_secret, "ms");
 
 //            if (!s->method->ssl3_enc->setup_key_block(s)) {
 //                /* SSLfatal() already called */
@@ -1431,13 +1423,8 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                                               SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_WRITE))
                 /* SSLfatal() already called */
                 return WORK_ERROR;
-            // print handshake parameter
-            dumpString(s->handshake_traffic_hash, "hth");
-            dumpString(s->handshake_secret, "hs");
-            dumpString(s->master_secret, "ms");
 
             // send application data encrypted by client traffic key
-            // problem) do_ssl3_write returns -1;
             printf("sending application data\n");
             char message[100] = "hello";
             SSL_write(s, message, 5); // problem : message가 encrypt 되어 가지 않는다.
@@ -1449,10 +1436,6 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
 //                /* SSLfatal() already called */
 //                return WORK_ERROR;
 //            }
-//            // print handshake parameter
-//            dumpString(s->handshake_traffic_hash, "hth");
-//            dumpString(s->handshake_secret, "hs");
-//            dumpString(s->master_secret, "ms");
 
             if (SSL_IS_DTLS(s)) {
 #ifndef OPENSSL_NO_SCTP
@@ -2369,9 +2352,6 @@ MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt) {
         /* SSLfatal() already called */
         goto err;
     }
-    dumpString(s->handshake_traffic_hash, "hth");
-    dumpString(s->handshake_secret, "hs");
-    dumpString(s->master_secret, "ms");
 
     OPENSSL_free(extensions);
     return MSG_PROCESS_CONTINUE_READING;
