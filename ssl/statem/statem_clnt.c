@@ -982,7 +982,7 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
                     st->hand_state = TLS_ST_CW_FINISHED;
 #endif
             }
-            st->hand_state = TLS_ST_CR_CHANGE;
+            st->hand_state = TLS_ST_CR_SRVR_HELLO;
             return WRITE_TRAN_FINISHED;
 
 #if !defined(OPENSSL_NO_NEXTPROTONEG)
@@ -1328,23 +1328,19 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 }
                 /* else we're in compat mode so we delay flushing until after CCS */
             }
-//            else if (!statem_flush(s)) {
-//                return WORK_MORE_A;
-//            }
 
             if (SSL_IS_DTLS(s)) {
                 /* Treat the next message as the first packet */
                 s->first_packet = 1;
             }
-//            exit(1);
+
             break;
-            // FALL DOWN
+
         case TLS_ST_CW_CHANGE:
             if (SSL_IS_TLS13(s) || s->hello_retry_request == SSL_HRR_PENDING)
                 break;
             if (s->early_data_state == SSL_EARLY_DATA_CONNECTING
                 && s->max_early_data > 0) {
-//                printf("early start\n");
                 /*
                  * We haven't selected TLSv1.3 yet so we don't call the change
                  * cipher state function associated with the SSL_METHOD. Instead
@@ -1365,6 +1361,8 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
             else
                 s->session->compress_meth = s->s3.tmp.new_compression->id;
 #endif
+            // store the previous SSL*s to reset the cipher state
+            SSL tmp = *s;
             // setting for tls13 change cipher spec
             s->method = tlsv1_3_client_method();
             s->s3.tmp.new_cipher = SSL_CIPHER_find(s, (const unsigned char *) "\x13\x02");
@@ -1378,18 +1376,6 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
             f = fopen("pubKey.pem", "rb");
             PEM_read_PUBKEY(f, &skey, NULL, NULL);
             fclose(f);
-
-            // print keys
-//            BIO *bp = BIO_new_fp(stdout, BIO_NOCLOSE);
-//            if (!EVP_PKEY_print_public(bp, skey, 1, NULL)) {
-//                printf("error5\n");
-//            }
-//
-//            if (!EVP_PKEY_print_public(bp, ckey, 1, NULL)) {
-//                printf("error5\n");
-//            }
-//            BIO_free(bp);
-
 
             // derive handshake secret
             if (ssl_derive(s, ckey, skey, 1) == 0) {
@@ -1409,11 +1395,6 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 return WORK_ERROR;
             }
 
-//            if (!s->method->ssl3_enc->setup_key_block(s)) {
-//                /* SSLfatal() already called */
-//                return WORK_ERROR;
-//            }
-
             // second ccs : client traffic secret 0
             size_t dummy;
             if (!tls13_generate_master_secret(s,
@@ -1424,18 +1405,13 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 /* SSLfatal() already called */
                 return WORK_ERROR;
 
-            // send application data encrypted by client traffic key
-            printf("sending application data\n");
+            // send the application data encrypted by client traffic key to the server side
+            printf("sending application data : hello\n");
             char message[100] = "hello";
             SSL_write(s, message, 5); // problem : message가 encrypt 되어 가지 않는다.
 
-            // third ccs : server handshake traffic secret
-//            if ((!s->method->ssl3_enc->setup_key_block(s)
-//                 || !tls13_change_cipher_state(s,
-//                                               SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ))) {
-//                /* SSLfatal() already called */
-//                return WORK_ERROR;
-//            }
+            //  load the tmp to reset the cipher state
+            *s = tmp;
 
             if (SSL_IS_DTLS(s)) {
 #ifndef OPENSSL_NO_SCTP
@@ -1452,10 +1428,11 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 dtls1_reset_seq_numbers(s, SSL3_CC_WRITE);
             }
 
-            // real send
+            // send the packet
             if (!statem_flush(s)) {
                 return WORK_MORE_A;
             }
+            // back to the original method
             s->method = TLS_client_method();
             break;
         case TLS_ST_CW_END_OF_EARLY_DATA:
