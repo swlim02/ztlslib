@@ -1729,9 +1729,12 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
                                                          s->master_secret, s->handshake_secret, 0,
                                                          &dummy)
                                                              || !tls13_change_cipher_state(s,
-                                                                                           SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_WRITE))
+                                                                                           SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_READ))
             /* SSLfatal() already called */
             return EXT_RETURN_FAIL;
+
+        SSL_read(s, buf, 100);
+        printf("buf : %s\n", buf);
 
         // load the tmp to reset the cipher state
         printf("==============================================\n");
