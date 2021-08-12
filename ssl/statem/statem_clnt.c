@@ -982,7 +982,7 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
                     st->hand_state = TLS_ST_CW_FINISHED;
 #endif
             }
-            st->hand_state = TLS_ST_CR_SRVR_HELLO;
+            st->hand_state = TLS_ST_CW_CLNT_HELLO;
             return WRITE_TRAN_FINISHED;
 
 #if !defined(OPENSSL_NO_NEXTPROTONEG)
@@ -1299,7 +1299,7 @@ WORK_STATE ossl_statem_client_post_work(SSL *s, WORK_STATE wst) {
 }
 
 WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
-    printf("(ossl_statem_client_post_work_reduce) start\n");
+//    printf("(ossl_statem_client_post_work_reduce) start\n");
     OSSL_STATEM *st = &s->statem;
 
     s->init_num = 0;
@@ -1406,8 +1406,9 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 return WORK_ERROR;
 
             // send the application data encrypted by client traffic key to the server side
-            printf("sending application data : hello\n");
-            char message[100] = "hello";
+
+            char message[100] = "mmlab";
+            printf("sending application data : %s\n", message);
             SSL_write(s, message, 5); // problem : message가 encrypt 되어 가지 않는다.
 
             //  load the tmp to reset the cipher state

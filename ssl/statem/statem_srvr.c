@@ -67,17 +67,13 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt) {
             break;
 
         case TLS_ST_EARLY_DATA:
-            printf("    (ossl_statem_server13_read_transition) scope 0\n");
             if (s->hello_retry_request == SSL_HRR_PENDING) {
-                printf("    (ossl_statem_server13_read_transition) scope 1\n");
                 if (mt == SSL3_MT_CLIENT_HELLO) {
-                    printf("    (ossl_statem_server13_read_transition) scope 2\n");
                     st->hand_state = TLS_ST_SR_CLNT_HELLO;
                     return 1;
                 }
                 break;
             } else if (s->ext.early_data == SSL_EARLY_DATA_ACCEPTED) {
-                printf("    (ossl_statem_server13_read_transition) scope 1-2\n");
                 if (mt == SSL3_MT_END_OF_EARLY_DATA) {
                     st->hand_state = TLS_ST_SR_END_OF_EARLY_DATA;
                     return 1;
@@ -90,13 +86,11 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt) {
         case TLS_ST_SW_FINISHED:
             if (s->s3.tmp.cert_request) {
                 if (mt == SSL3_MT_CERTIFICATE) {
-                    printf("    (ossl_statem_server13_read_transition) scope 6\n");
                     st->hand_state = TLS_ST_SR_CERT;
                     return 1;
                 }
             } else {
                 if (mt == SSL3_MT_FINISHED) {
-                    printf("    (ossl_statem_server13_read_transition) scope 7\n");
                     st->hand_state = TLS_ST_SR_FINISHED;
                     return 1;
                 }
@@ -633,13 +627,10 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s) {
             if ((s->options & SSL_OP_ENABLE_MIDDLEBOX_COMPAT) != 0
                 && s->hello_retry_request != SSL_HRR_COMPLETE) {
                 st->hand_state = TLS_ST_SW_CHANGE;
-                printf("A\n");
             } else if (s->hello_retry_request == SSL_HRR_PENDING) {
                 st->hand_state = TLS_ST_EARLY_DATA;
-                printf("B\n");
             } else {
                 st->hand_state = TLS_ST_SW_ENCRYPTED_EXTENSIONS;
-                printf("C\n");
             }
             return WRITE_TRAN_CONTINUE;
 
@@ -1521,11 +1512,7 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
                     /* SSLfatal() already called */
                     return WORK_ERROR;
                 }
-                if (s->ext.early_data != SSL_EARLY_DATA_ACCEPTED) {
-                    printf("s->early_data !=\n");
-                } else {
-                    printf("not s->early_data\n");
-                }
+
                 if (s->ext.early_data != SSL_EARLY_DATA_ACCEPTED
                     && !s->method->ssl3_enc->change_cipher_state(s,
                                                                  SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_READ)) {
@@ -1897,12 +1884,9 @@ WORK_STATE ossl_statem_server_post_process_message(SSL *s, WORK_STATE wst) {
             return WORK_ERROR;
 
         case TLS_ST_SR_CLNT_HELLO:
-            printf("TLS_ST_SR_CLNT_HELLO\n");
             return tls_post_process_client_hello(s, wst);
 
         case TLS_ST_SR_KEY_EXCH:
-            printf("TLS_ST_SR_KEY_EXCH\n");
-
             return tls_post_process_client_key_exchange(s, wst);
     }
 }
@@ -1917,11 +1901,9 @@ WORK_STATE ossl_statem_server_post_process_message_reduce(SSL *s, WORK_STATE wst
             return WORK_ERROR;
 
         case TLS_ST_SR_CLNT_HELLO:
-            printf("TLS_ST_SR_CLNT_HELLO\n");
             return tls_post_process_client_hello_reduce(s, wst);
 
         case TLS_ST_SR_KEY_EXCH:
-            printf("TLS_ST_SR_KEY_EXCH\n");
             return tls_post_process_client_key_exchange(s, wst);
     }
 }

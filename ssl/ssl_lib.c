@@ -3874,6 +3874,9 @@ int SSL_do_handshake(SSL *s)
     if(dns){
         return SSL_do_handshake_reduce(s);
     }
+    printf("==============================================\n");
+    printf("start do handshake\n");
+    printf("==============================================\n");
 
 
     if (s->handshake_func == NULL) {
@@ -3902,7 +3905,9 @@ int SSL_do_handshake(SSL *s)
 }
 int SSL_do_handshake_reduce(SSL *s)
 {
+    printf("==============================================\n");
     printf("start do handshake reduce\n");
+    printf("==============================================\n");
     int ret = 1;
 
     if (s->handshake_func == NULL) {
@@ -3936,7 +3941,6 @@ void SSL_set_connect_state(SSL *s)
     s->shutdown = 0;
     ossl_statem_clear(s);
     s->handshake_func = s->method->ssl_connect;
-    printf("hello\n");
     clear_ciphers(s);
 }
 
@@ -5524,6 +5528,7 @@ static int nss_keylog_int(const char *prefix,
     dumpString(ssl->handshake_traffic_hash, "hth");
     dumpString(ssl->handshake_secret, "hs");
     dumpString(ssl->master_secret, "ms");
+    printf("==============================================\n");
     return 1;
 
 }

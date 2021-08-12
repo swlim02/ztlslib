@@ -913,8 +913,8 @@ static SUB_STATE_RETURN read_state_machine(SSL *s) {
                     SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
                     return SUB_STATE_ERROR;
                 }
-                printf("           before process message: %s\n",
-                                                    SSL_state_string_long(s));
+//                printf("           before process message: %s\n",
+//                                                    SSL_state_string_long(s));
                 ret = process_message(s, &pkt);
 
                 /* Discard the packet data */
@@ -1040,9 +1040,9 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                  * Validate that we are allowed to move to the new state and move
                  * to that state if so
                  */
+                printf("%s\n",SSL_state_string_long(s));
                 if (!transition(s, mt))
                     return SUB_STATE_ERROR;
-
                 if (s->s3.tmp.message_size > max_message_size(s)) {
                     SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER,
                              SSL_R_EXCESSIVE_MESSAGE_SIZE);
@@ -1062,7 +1062,7 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                 /* Fall through */
 
             case READ_STATE_BODY:
-                printf("READ_STATE_BODY in read_state_machine func\n");
+//                printf("READ_STATE_BODY in read_state_machine func\n");
                 if (SSL_IS_DTLS(s)) {
                     /*
                      * Actually we already have the body, but we give DTLS the
@@ -1083,7 +1083,7 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                     SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
                     return SUB_STATE_ERROR;
                 }
-                printf("           before process message: %s\n",SSL_state_string_long(s));
+//                printf("           before process message: %s\n",SSL_state_string_long(s));
                 ret = process_message(s, &pkt);
 
                 /* Discard the packet data */
@@ -1402,14 +1402,13 @@ static SUB_STATE_RETURN write_state_machine_reduce(SSL *s) {
     WPACKET pkt;
 
     cb = get_callback(s);
+
     if (s->server) {
-        printf("using dns\n");
         transition = ossl_statem_server_write_transition_reduce;
         pre_work = ossl_statem_server_pre_work_reduce;
         post_work = ossl_statem_server_post_work_reduce;
         get_construct_message_f = ossl_statem_server_construct_message;
     } else if (!s->server) {
-        printf("using dns\n");
         transition = ossl_statem_client_write_transition_reduce;
         pre_work = ossl_statem_client_pre_work_reduce;
         post_work = ossl_statem_client_post_work_reduce;
@@ -1435,7 +1434,6 @@ static SUB_STATE_RETURN write_state_machine_reduce(SSL *s) {
                         break;
 
                     case WRITE_TRAN_FINISHED:
-                                        printf("transition(s) is WRITE_TRAN_FINISHED in write_state_machine func \n");
                         return SUB_STATE_FINISHED;
                         break;
 

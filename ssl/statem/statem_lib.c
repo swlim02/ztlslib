@@ -1185,7 +1185,6 @@ int tls_get_message_header(SSL *s, int *mt)
                  * A ChangeCipherSpec must be a single byte and may not occur
                  * in the middle of a handshake message.
                  */
-                printf("recvd_type : CCS\n");
                 if (s->init_num != 0 || readbytes != 1 || p[0] != SSL3_MT_CCS) {
                     SSLfatal(s, SSL_AD_UNEXPECTED_MESSAGE,
                              SSL_R_BAD_CHANGE_CIPHER_SPEC);
@@ -1238,7 +1237,6 @@ int tls_get_message_header(SSL *s, int *mt)
                 }
     } while (skip_message);
     /* s->init_num == SSL3_HM_HEADER_LENGTH */
-
     *mt = *p;
     s->s3.tmp.message_type = *(p++);
 //    printf("mt : %d\n", *mt);

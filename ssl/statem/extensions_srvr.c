@@ -1556,9 +1556,7 @@ EXT_RETURN tls_construct_stoc_supported_versions(SSL *s, WPACKET *pkt,
 EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
                                         unsigned int context, X509 *x,
                                         size_t chainidx) {
-    printf("Let's construct stoc key share\n");
 #ifndef OPENSSL_NO_TLS1_3
-    char buf[100];
     unsigned char *encodedPoint;
     size_t encoded_pt_len = 0;
     EVP_PKEY *ckey = s->s3.peer_tmp, *skey = NULL, *skey1 = NULL;
@@ -1671,14 +1669,16 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
             return EXT_RETURN_FAIL;
 
         // server read application data sent by client
+        char buf[100];
         SSL_read(s, buf, 100);
         printf("buf : %s\n", buf);
+
+
 
         // load the tmp to reset the cipher state
         *s = tmp;
     } else {
         /* KEM mode */
-        printf("    KEM mode\n");
         unsigned char *ct = NULL;
         size_t ctlen = 0;
 
