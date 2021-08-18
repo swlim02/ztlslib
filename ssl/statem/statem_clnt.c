@@ -1989,7 +1989,7 @@ static int set_client_ciphersuite(SSL *s, const unsigned char *cipherchars) {
 }
 
 MSG_PROCESS_RETURN tls_process_server_hello(SSL *s, PACKET *pkt) {
-    printf("        (tls_process_server_hello) start\n");
+//    printf("        (tls_process_server_hello) start\n");
     PACKET session_id, extpkt;
     size_t session_id_len;
     const unsigned char *cipherchars;

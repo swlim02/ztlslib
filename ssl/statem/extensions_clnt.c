@@ -1918,12 +1918,12 @@ int tls_parse_stoc_key_share(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
 
         fclose(f);
 
-        BIO *bp = BIO_new_fp(stdout, BIO_NOCLOSE);
-        if(!EVP_PKEY_print_public(bp, skey, 1, NULL))
-        {
-            printf("error5\n");
-        }
-        BIO_free(bp);
+//        BIO *bp = BIO_new_fp(stdout, BIO_NOCLOSE);
+//        if(!EVP_PKEY_print_public(bp, skey, 1, NULL))
+//        {
+//            printf("error5\n");
+//        }
+//        BIO_free(bp);
         if (ssl_derive(s, ckey, skey, 1) == 0) {
             /* SSLfatal() already called */
             EVP_PKEY_free(skey);
