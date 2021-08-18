@@ -1571,7 +1571,7 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
 
             char message[100] = "mmlab";
             printf("sending application data : %s\n", message);
-            SSL_write(s, message, 5);
+            SSL_write(s, message, 6);
 
             *s = tmp;
             if (statem_flush(s) != 1)

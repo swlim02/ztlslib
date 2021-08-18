@@ -1040,7 +1040,7 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                  * Validate that we are allowed to move to the new state and move
                  * to that state if so
                  */
-                printf("%s\n",SSL_state_string_long(s));
+//                printf("%s\n",SSL_state_string_long(s));
                 if (!transition(s, mt))
                     return SUB_STATE_ERROR;
                 if (s->s3.tmp.message_size > max_message_size(s)) {
@@ -1111,10 +1111,10 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                                 return SUB_STATE_ERROR;
 
                                 // server read application data sent by client
-                                char buf[100];
-                                SSL_read(s, buf, 100);
-                                printf("buf : %s\n", buf);
-                                *s=tmp;
+                            char buf[100];
+                            SSL_read(s, buf, 100);
+                            printf("buf : %s\n", buf);
+                            *s=tmp;
                         }
                         return SUB_STATE_FINISHED;
 

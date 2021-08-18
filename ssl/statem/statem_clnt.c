@@ -864,7 +864,7 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
      * later
      */
     if (SSL_IS_TLS13(s)) {
-        printf("    SSL_IS_TLS13\n");
+//        printf("    SSL_IS_TLS13\n");
         return ossl_statem_client13_write_transition(s);
     }
     switch (st->hand_state) {
@@ -1407,9 +1407,9 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
 
             // send the application data encrypted by client traffic key to the server side
 
-            char message[100] = "mmlab";
+            char message[100] = "hello";
             printf("sending application data : %s\n", message);
-            SSL_write(s, message, 5); // problem : message가 encrypt 되어 가지 않는다.
+            SSL_write(s, message, 6); // problem : message가 encrypt 되어 가지 않는다.
 
             //  load the tmp to reset the cipher state
             *s = tmp;
