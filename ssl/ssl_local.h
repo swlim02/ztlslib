@@ -2358,6 +2358,8 @@ struct openssl_ssl_test_functions {
     int (*p_ssl_init_wbio_buffer) (SSL *s);
     int (*p_ssl3_setup_buffers) (SSL *s);
 };
+#define     Log(fmt, args...)           LogPrint(__LINE__, __func__, fmt, ## args)
+int LogPrint (const int line, const char *func, const char *format, ... );
 void dumpString(unsigned char *s, char *name);
 const char *ssl_protocol_to_string(int version);
 

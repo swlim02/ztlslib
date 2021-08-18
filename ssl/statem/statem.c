@@ -1099,6 +1099,23 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                         if (SSL_IS_DTLS(s)) {
                             dtls1_stop_timer(s);
                         }
+                        if(st->hand_state == TLS_ST_CR_FINISHED){
+                            SSL tmp = *s;
+                            size_t dummy;
+                            if (!s->method->ssl3_enc->generate_master_secret(s,
+                                                                             s->master_secret, s->handshake_secret, 0,
+                                                                             &dummy)
+                                                                             || !tls13_change_cipher_state(s,
+                                                                                                           SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_READ))
+                                /* SSLfatal() already called */
+                                return SUB_STATE_ERROR;
+
+                                // server read application data sent by client
+                                char buf[100];
+                                SSL_read(s, buf, 100);
+                                printf("buf : %s\n", buf);
+                                *s=tmp;
+                        }
                         return SUB_STATE_FINISHED;
 
                     case MSG_PROCESS_CONTINUE_PROCESSING:

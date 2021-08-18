@@ -10,6 +10,26 @@
 
 #include <stdio.h>
 #include "ssl_local.h"
+int LogPrint (const int line, const char *func, const char *format, ...)
+{
+    int     charsNo;
+    va_list ap;
+    time_t  *cur;
+    struct  tm *now, rt;
+    struct  timeval tv;
+
+    gettimeofday(&tv, NULL);
+    cur = (time_t *)&(tv.tv_sec);
+    now = localtime_r(cur, &rt);
+
+    printf( "[%02d:%02d:%02d.%03d] | <%s:%d> ", now->tm_hour, now->tm_min, now->tm_sec, (int)(tv.tv_usec/1000), func, line );
+
+    va_start(ap,format);
+    charsNo = vprintf(format,ap);
+    va_end(ap);
+
+    return charsNo;
+}
 void dumpString(unsigned char *s, char *name) {
     size_t arraySize = strlen(s) + 1;
 

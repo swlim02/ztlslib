@@ -1422,6 +1422,7 @@ WORK_STATE ossl_statem_server_post_work(SSL *s, WORK_STATE wst) {
 
 WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
     OSSL_STATEM *st = &s->statem;
+    SSL tmp;
 
     s->init_num = 0;
 
@@ -1555,6 +1556,24 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
             break;
 
         case TLS_ST_SW_FINISHED:
+            tmp = *s;
+            if (SSL_IS_TLS13(s)) {
+                /* TLS 1.3 gets the secret size from the handshake md */
+                size_t dummy;
+                if (!s->method->ssl3_enc->generate_master_secret(s,
+                                                                 s->master_secret, s->handshake_secret, 0,
+                                                                 &dummy)
+                                                                 || !s->method->ssl3_enc->change_cipher_state(s,
+                                                                                                              SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_WRITE))
+                    /* SSLfatal() already called */
+                    return WORK_ERROR;
+            }
+
+            char message[100] = "mmlab";
+            printf("sending application data : %s\n", message);
+            SSL_write(s, message, 5);
+
+            *s = tmp;
             if (statem_flush(s) != 1)
                 return WORK_MORE_A;
 #ifndef OPENSSL_NO_SCTP
