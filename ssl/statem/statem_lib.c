@@ -879,7 +879,7 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
         }
     }
 
-    if(!s->server){
+    if(s->early_data_state == SSL_DNS && !s->server){
         SSL tmp = *s;
         size_t dummy;
         if (!s->method->ssl3_enc->generate_master_secret(s,
@@ -898,7 +898,6 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
         *s=tmp;
     }
 
-//    return MSG_PROCESS_FINISHED_READING;
     return MSG_PROCESS_FINISHED_READING;
 }
 

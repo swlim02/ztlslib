@@ -1040,7 +1040,6 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                  * Validate that we are allowed to move to the new state and move
                  * to that state if so
                  */
-//                printf("%s\n",SSL_state_string_long(s));
                 if (!transition(s, mt))
                     return SUB_STATE_ERROR;
                 if (s->s3.tmp.message_size > max_message_size(s)) {
@@ -1227,45 +1226,18 @@ static SUB_STATE_RETURN write_state_machine(SSL *s) {
 
     cb = get_callback(s);
     if (s->server) {
-        printf("not using dns\n");
+        Log("not using dns\n");
         transition = ossl_statem_server_write_transition;
         pre_work = ossl_statem_server_pre_work;
         post_work = ossl_statem_server_post_work;
         get_construct_message_f = ossl_statem_server_construct_message;
     } else if (!s->server) {
-        printf("not using dns\n");
+        Log("not using dns\n");
         transition = ossl_statem_client_write_transition;
         pre_work = ossl_statem_client_pre_work;
         post_work = ossl_statem_client_post_work;
         get_construct_message_f = ossl_statem_client_construct_message;
     }
-//    if (s->server && !s->dns) {
-//        printf("not using dns\n");
-//        transition = ossl_statem_server_write_transition;
-//        pre_work = ossl_statem_server_pre_work;
-//        post_work = ossl_statem_server_post_work;
-//        get_construct_message_f = ossl_statem_server_construct_message;
-//    } else if(!s->server && !s->dns){
-//        printf("not using dns\n");
-//        transition = ossl_statem_client_write_transition;
-//        pre_work = ossl_statem_client_pre_work;
-//        post_work = ossl_statem_client_post_work;
-//        get_construct_message_f = ossl_statem_client_construct_message;
-//    }
-//
-//    if (s->server && s->dns) {
-//        printf("using dns\n");
-//        transition = ossl_statem_server_write_transition;
-//        pre_work = ossl_statem_server_pre_work;
-//        post_work = ossl_statem_server_post_work;
-//        get_construct_message_f = ossl_statem_server_construct_message;
-//    } else if(!s->server && s->dns){
-//        printf("using dns\n");
-//        transition = ossl_statem_client_write_transition;
-//        pre_work = ossl_statem_client_pre_work;
-//        post_work = ossl_statem_client_post_work;
-//        get_construct_message_f = ossl_statem_client_construct_message;
-//    }
 
     while (1) {
         switch (st->write_state) {

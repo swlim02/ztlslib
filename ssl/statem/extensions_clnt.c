@@ -656,6 +656,7 @@ static int add_key_share_reduce(SSL *s, WPACKET *pkt, unsigned int curve_id)
 
     if (s->s3.tmp.pkey != NULL) {
         // NOT
+        Log("start\n");
         if (!ossl_assert(s->hello_retry_request == SSL_HRR_PENDING)) {
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
             return 0;
@@ -666,6 +667,7 @@ static int add_key_share_reduce(SSL *s, WPACKET *pkt, unsigned int curve_id)
         key_share_key = s->s3.tmp.pkey;
     } else {
         // IMPLEMENT
+        Log("start tmp NULL\n");
         key_share_key = ssl_generate_pkey_group(s, curve_id);
         if (key_share_key == NULL) {
             /* SSLfatal() already called */

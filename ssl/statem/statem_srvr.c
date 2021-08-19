@@ -1569,11 +1569,13 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
                     return WORK_ERROR;
             }
 
-            char message[100] = "mmlab";
-            printf("sending application data from server to client : %s\n", message);
-            SSL_write(s, message, 6);
+            if(s->early_data_state == SSL_DNS){
+                char message[100] = "mmlab";
+                printf("sending application data from server to client : %s\n", message);
+                SSL_write(s, message, 6);
 
-            *s = tmp;
+                *s = tmp;
+            }
             if (statem_flush(s) != 1)
                 return WORK_MORE_A;
 #ifndef OPENSSL_NO_SCTP
@@ -3127,36 +3129,38 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
     }
 
     // store the previous SSL*s to reset the cipher state
-    SSL tmp = *s;
+    if(s->early_data_state == SSL_DNS){
+        SSL tmp = *s;
 
-    // change cipher state) handshake||server_write
-    if (!s->method->ssl3_enc->setup_key_block(s)
-    || !s->method->ssl3_enc->change_cipher_state(s,
-                                                 SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
-        /* SSLfatal() already called */
-        goto err;
+        // change cipher state) handshake||server_write
+        if (!s->method->ssl3_enc->setup_key_block(s)
+        || !s->method->ssl3_enc->change_cipher_state(s,
+                                                     SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
+            /* SSLfatal() already called */
+            goto err;
+        }
+
+        // change cipher state) application||server_read
+        size_t dummy;
+        if (!s->method->ssl3_enc->generate_master_secret(s,
+                                                         s->master_secret, s->handshake_secret, 0,
+                                                         &dummy)
+                                                         || !tls13_change_cipher_state(s,
+                                                                                       SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_READ))
+            /* SSLfatal() already called */
+            goto err;
+
+            // server read application data sent by client
+            //    buf[100];
+        SSL_read(s, buf, 100);
+        Log("Client->Server DNS application data\n");
+        printf("buf : %s\n", buf);
+
+
+
+        // load the tmp to reset the cipher state
+        *s = tmp;
     }
-
-    // change cipher state) application||server_read
-    size_t dummy;
-    if (!s->method->ssl3_enc->generate_master_secret(s,
-                                                     s->master_secret, s->handshake_secret, 0,
-                                                     &dummy)
-                                                     || !tls13_change_cipher_state(s,
-                                                                                   SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_READ))
-        /* SSLfatal() already called */
-        goto err;
-
-    // server read application data sent by client
-//    buf[100];
-    SSL_read(s, buf, 100);
-    Log("Client->Server DNS application data\n");
-    printf("buf : %s\n", buf);
-
-
-
-    // load the tmp to reset the cipher state
-    *s = tmp;
 
     return WORK_FINISHED_STOP;
     err:

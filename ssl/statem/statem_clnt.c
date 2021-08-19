@@ -884,9 +884,7 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
             /* Renegotiation */
             /* fall thru */
         case TLS_ST_BEFORE:
-            printf("    st->hand_state is TLS_ST_CW_CLNT_HELLO\n");
             st->hand_state = TLS_ST_CW_CLNT_HELLO;
-            //        st->hand_state = TLS_ST_CR_SRVR_HELLO;
             return WRITE_TRAN_CONTINUE;
 
         case TLS_ST_CW_CLNT_HELLO:
@@ -896,21 +894,22 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
                  * actually selected a version yet.
                  */
                 if ((s->options & SSL_OP_ENABLE_MIDDLEBOX_COMPAT) != 0) {
-                    printf("    st->hand_state is TLS_ST_CW_CHANGE\n");
                     st->hand_state = TLS_ST_CW_CHANGE;
                 } else {
-                    printf("    st->hand_state is TLS_ST_EARLY_DATA\n");
                     st->hand_state = TLS_ST_EARLY_DATA;
                 }
                 return WRITE_TRAN_CONTINUE;
             }
-//            st->hand_state = TLS_ST_CW_CHANGE;
-            st->hand_state = TLS_ST_CW_DNS_APPLICATION;
+
+            if(s->early_data_state == SSL_DNS){
+                st->hand_state = TLS_ST_CW_DNS_APPLICATION;
+                return WRITE_TRAN_CONTINUE;
+            }
             /*
              * No transition at the end of writing because we don't know what
              * we will be sent
              */
-            return WRITE_TRAN_CONTINUE;
+            return WRITE_TRAN_FINISHED;
 
         case TLS_ST_CR_SRVR_HELLO:
             /*
@@ -1331,6 +1330,8 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                     }
                 }
                 /* else we're in compat mode so we delay flushing until after CCS */
+            }else if (s->early_data_state != SSL_DNS && !statem_flush(s)) {
+                return WORK_MORE_A;
             }
 
             if (SSL_IS_DTLS(s)) {
@@ -1367,7 +1368,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 s->session->compress_meth = s->s3.tmp.new_compression->id;
 #endif
             // store the previous SSL*s to reset the cipher state
-            if(st->hand_state == TLS_ST_CW_DNS_APPLICATION){
+            if(st->hand_state == TLS_ST_CW_DNS_APPLICATION && s->early_data_state == SSL_DNS){
                 SSL tmp = *s;
                 // setting for tls13 change cipher spec
                 s->method = tlsv1_3_client_method();
@@ -1413,12 +1414,12 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
 
                     // send the application data encrypted by client traffic key to the server side
 
-                    char message[100] = "hello";
-                    printf("sending application data from client to server : %s\n", message);
-                    SSL_write(s, message, 6); // problem : message가 encrypt 되어 가지 않는다.
+                char message[100] = "hello";
+                printf("sending application data from client to server : %s\n", message);
+                SSL_write(s, message, 6); // problem : message가 encrypt 되어 가지 않는다.
 
-                    //  load the tmp to reset the cipher state
-                    *s = tmp;
+                //  load the tmp to reset the cipher state
+                *s = tmp;
 
                     if (SSL_IS_DTLS(s)) {
 #ifndef OPENSSL_NO_SCTP

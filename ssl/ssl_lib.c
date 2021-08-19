@@ -3870,12 +3870,12 @@ int SSL_do_handshake(SSL *s)
 
     int dns = 1;
 
-
+    s->early_data_state = SSL_DNS;
     if(dns){
         return SSL_do_handshake_reduce(s);
     }
     printf("==============================================\n");
-    printf("start do handshake\n");
+    Log("start do handshake\n");
     printf("==============================================\n");
 
 
@@ -3883,8 +3883,6 @@ int SSL_do_handshake(SSL *s)
         ERR_raise(ERR_LIB_SSL, SSL_R_CONNECTION_TYPE_NOT_SET);
         return -1;
     }
-
-
 
     ossl_statem_check_finish_init(s, -1);
 
@@ -3926,6 +3924,7 @@ int SSL_do_handshake_reduce(SSL *s)
     }
     return ret;
 }
+
 void SSL_set_accept_state(SSL *s)
 {
     s->server = 1;
