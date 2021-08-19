@@ -3112,7 +3112,6 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
 
     encoded_pt_len = EVP_PKEY_get1_encoded_public_key(skey, &encodedPoint);
     if (encoded_pt_len == 0) {
-        printf(" ENCOEDE_LEN 0\n");
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EC_LIB);
         EVP_PKEY_free(skey);
         goto err;
@@ -3151,6 +3150,7 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
     // server read application data sent by client
 //    buf[100];
     SSL_read(s, buf, 100);
+    Log("Client->Server DNS application data\n");
     printf("buf : %s\n", buf);
 
 

@@ -878,6 +878,26 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
             }
         }
     }
+
+    if(!s->server){
+        SSL tmp = *s;
+        size_t dummy;
+        if (!s->method->ssl3_enc->generate_master_secret(s,
+                                                         s->master_secret, s->handshake_secret, 0,
+                                                         &dummy)
+                                                         || !tls13_change_cipher_state(s,
+                                                                                       SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_READ))
+            /* SSLfatal() already called */
+            return MSG_PROCESS_ERROR;
+
+            // server read application data sent by client
+        char buf[100];
+        SSL_read(s, buf, 100);
+        Log("Server->Client DNS application data\n");
+        printf("buf : %s\n", buf);
+        *s=tmp;
+    }
+
 //    return MSG_PROCESS_FINISHED_READING;
     return MSG_PROCESS_FINISHED_READING;
 }

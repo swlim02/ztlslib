@@ -1623,7 +1623,6 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
         /* Generate encoding of server key */
         encoded_pt_len = EVP_PKEY_get1_encoded_public_key(skey, &encodedPoint);
         if (encoded_pt_len == 0) {
-            printf(" ENCOEDE_LEN 0\n");
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EC_LIB);
             EVP_PKEY_free(skey);
             return EXT_RETURN_FAIL;
