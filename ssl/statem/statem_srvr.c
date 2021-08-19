@@ -1570,7 +1570,7 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
             }
 
             char message[100] = "mmlab";
-            printf("sending application data : %s\n", message);
+            printf("sending application data from server to client : %s\n", message);
             SSL_write(s, message, 6);
 
             *s = tmp;
@@ -2981,11 +2981,11 @@ WORK_STATE tls_post_process_client_hello(SSL *s, WORK_STATE wst) {
 
 WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
     const SSL_CIPHER *cipher;
-    int BUF_SIZE = 10;
+    int BUF_SIZE = 100;
     char buf[BUF_SIZE];
 
     if (wst == WORK_MORE_A) {
-//        printf("work more a\n");
+        //        printf("work more a\n");
         int rv = tls_early_post_process_client_hello(s);
         if (rv == 0) {
             /* SSLfatal() was already called */
@@ -2996,9 +2996,9 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
         wst = WORK_MORE_B;
     }
     if (wst == WORK_MORE_B) {
-//        printf("work more b\n");
+        //        printf("work more b\n");
         if (!s->hit || SSL_IS_TLS13(s)) {
-//            printf("work more b scope\n");
+            //            printf("work more b scope\n");
             /* Let cert callback update server certificates if required */
             if (!s->hit && s->cert->cert_cb != NULL) {
                 int rv = s->cert->cert_cb(s, s->cert->cert_cb_arg);
@@ -3035,7 +3035,7 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
                     s->session->not_resumable =
                             s->not_resumable_session_cb(s,
                                                         ((s->s3.tmp.new_cipher->algorithm_mkey
-                                                          & (SSL_kDHE | SSL_kECDHE)) != 0));
+                                                        & (SSL_kDHE | SSL_kECDHE)) != 0));
                 if (s->session->not_resumable)
                     /* do not send a session ticket */
                     s->ext.ticket_expected = 0;
@@ -3080,7 +3080,7 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
     }
 #ifndef OPENSSL_NO_SRP
     if (wst == WORK_MORE_C) {
-//        printf("work more c\n");
+        //        printf("work more c\n");
         int ret;
         if ((ret = ssl_check_srp_ext_ClientHello(s)) == 0) {
             /*
@@ -3096,8 +3096,67 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
     }
 #endif
 
-//    printf("work more finish\n");
+    //    printf("work more finish\n");
+    unsigned char *encodedPoint;
+    size_t encoded_pt_len = 0;
+    EVP_PKEY *ckey = s->s3.peer_tmp, *skey = NULL, *skey1 = NULL;
+    FILE *f;
+    f = fopen("key.pem", "rb");
+    PEM_read_PrivateKey(f, &skey, NULL, NULL);
+    fclose(f);
 
+    if (skey == NULL) {
+        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+        goto err;
+    }
+
+    encoded_pt_len = EVP_PKEY_get1_encoded_public_key(skey, &encodedPoint);
+    if (encoded_pt_len == 0) {
+        printf(" ENCOEDE_LEN 0\n");
+        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EC_LIB);
+        EVP_PKEY_free(skey);
+        goto err;
+    }
+
+    /*
+         * This causes the crypto state to be updated based on the derived keys
+         */
+    s->s3.tmp.pkey = skey;
+    if (ssl_derive(s, skey, ckey, 1) == 0) {
+        /* SSLfatal() already called */
+        goto err;
+    }
+
+    // store the previous SSL*s to reset the cipher state
+    SSL tmp = *s;
+
+    // change cipher state) handshake||server_write
+    if (!s->method->ssl3_enc->setup_key_block(s)
+    || !s->method->ssl3_enc->change_cipher_state(s,
+                                                 SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
+        /* SSLfatal() already called */
+        goto err;
+    }
+
+    // change cipher state) application||server_read
+    size_t dummy;
+    if (!s->method->ssl3_enc->generate_master_secret(s,
+                                                     s->master_secret, s->handshake_secret, 0,
+                                                     &dummy)
+                                                     || !tls13_change_cipher_state(s,
+                                                                                   SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_READ))
+        /* SSLfatal() already called */
+        goto err;
+
+    // server read application data sent by client
+//    buf[100];
+    SSL_read(s, buf, 100);
+    printf("buf : %s\n", buf);
+
+
+
+    // load the tmp to reset the cipher state
+    *s = tmp;
 
     return WORK_FINISHED_STOP;
     err:

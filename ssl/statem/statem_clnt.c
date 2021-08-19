@@ -904,7 +904,8 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
                 }
                 return WRITE_TRAN_CONTINUE;
             }
-            st->hand_state = TLS_ST_CW_CHANGE;
+//            st->hand_state = TLS_ST_CW_CHANGE;
+            st->hand_state = TLS_ST_CW_DNS_APPLICATION;
             /*
              * No transition at the end of writing because we don't know what
              * we will be sent
@@ -967,6 +968,10 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
             st->hand_state = TLS_ST_CW_CHANGE;
             return WRITE_TRAN_CONTINUE;
 
+        case TLS_ST_CW_DNS_APPLICATION:
+            st->hand_state = TLS_ST_CW_CLNT_HELLO;
+            return WRITE_TRAN_FINISHED;
+
         case TLS_ST_CW_CHANGE:
             if (s->hello_retry_request == SSL_HRR_PENDING) {
                 st->hand_state = TLS_ST_CW_CLNT_HELLO;
@@ -982,7 +987,6 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
                     st->hand_state = TLS_ST_CW_FINISHED;
 #endif
             }
-            st->hand_state = TLS_ST_CW_CLNT_HELLO;
             return WRITE_TRAN_FINISHED;
 
 #if !defined(OPENSSL_NO_NEXTPROTONEG)
@@ -1336,6 +1340,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
 
             break;
 
+        case TLS_ST_CW_DNS_APPLICATION:
         case TLS_ST_CW_CHANGE:
             if (SSL_IS_TLS13(s) || s->hello_retry_request == SSL_HRR_PENDING)
                 break;
@@ -1362,79 +1367,81 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 s->session->compress_meth = s->s3.tmp.new_compression->id;
 #endif
             // store the previous SSL*s to reset the cipher state
-            SSL tmp = *s;
-            // setting for tls13 change cipher spec
-            s->method = tlsv1_3_client_method();
-            s->s3.tmp.new_cipher = SSL_CIPHER_find(s, (const unsigned char *) "\x13\x02");
-            s->session->cipher = s->s3.tmp.new_cipher;
-            s->s3.group_id = 0x001d;
-            s->session->kex_group = s->s3.group_id;
+            if(st->hand_state == TLS_ST_CW_DNS_APPLICATION){
+                SSL tmp = *s;
+                // setting for tls13 change cipher spec
+                s->method = tlsv1_3_client_method();
+                s->s3.tmp.new_cipher = SSL_CIPHER_find(s, (const unsigned char *) "\x13\x02");
+                s->session->cipher = s->s3.tmp.new_cipher;
+                s->s3.group_id = 0x001d;
+                s->session->kex_group = s->s3.group_id;
 
-            // assign client's ecdhe private key and server public key
-            EVP_PKEY *ckey = s->s3.tmp.pkey, *skey = NULL;
-            FILE *f;
-            f = fopen("pubKey.pem", "rb");
-            PEM_read_PUBKEY(f, &skey, NULL, NULL);
-            fclose(f);
+                // assign client's ecdhe private key and server public key
+                EVP_PKEY *ckey = s->s3.tmp.pkey, *skey = NULL;
+                FILE *f;
+                f = fopen("pubKey.pem", "rb");
+                PEM_read_PUBKEY(f, &skey, NULL, NULL);
+                fclose(f);
 
-            // derive handshake secret
-            if (ssl_derive(s, ckey, skey, 1) == 0) {
-                /* SSLfatal() already called */
-                EVP_PKEY_free(skey);
-                return 0;
-            }
-
-            // set server's ecdhe public key
-            s->s3.peer_tmp = skey;
-
-            // first ccs : server handshake traffic secret
-            if ((!s->method->ssl3_enc->setup_key_block(s)
-                 || !tls13_change_cipher_state(s,
-                                               SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ))) {
-                /* SSLfatal() already called */
-                return WORK_ERROR;
-            }
-
-            // second ccs : client traffic secret 0
-            size_t dummy;
-            if (!tls13_generate_master_secret(s,
-                                              s->master_secret, s->handshake_secret, 0,
-                                              &dummy)
-                || !tls13_change_cipher_state(s,
-                                              SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_WRITE))
-                /* SSLfatal() already called */
-                return WORK_ERROR;
-
-            // send the application data encrypted by client traffic key to the server side
-
-            char message[100] = "hello";
-            printf("sending application data : %s\n", message);
-            SSL_write(s, message, 6); // problem : message가 encrypt 되어 가지 않는다.
-
-            //  load the tmp to reset the cipher state
-            *s = tmp;
-
-            if (SSL_IS_DTLS(s)) {
-#ifndef OPENSSL_NO_SCTP
-                if (s->hit) {
-                    /*
-                     * Change to new shared key of SCTP-Auth, will be ignored if
-                     * no SCTP used.
-                     */
-                    BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_SCTP_NEXT_AUTH_KEY,
-                             0, NULL);
+                // derive handshake secret
+                if (ssl_derive(s, ckey, skey, 1) == 0) {
+                    /* SSLfatal() already called */
+                    EVP_PKEY_free(skey);
+                    return 0;
                 }
+
+                // set server's ecdhe public key
+                s->s3.peer_tmp = skey;
+
+                // first ccs : server handshake traffic secret
+                if ((!s->method->ssl3_enc->setup_key_block(s)
+                || !tls13_change_cipher_state(s,
+                                              SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ))) {
+                    /* SSLfatal() already called */
+                    return WORK_ERROR;
+                }
+
+                // second ccs : client traffic secret 0
+                size_t dummy;
+                if (!tls13_generate_master_secret(s,
+                                                  s->master_secret, s->handshake_secret, 0,
+                                                  &dummy)
+                                                  || !tls13_change_cipher_state(s,
+                                                                                SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_WRITE))
+                    /* SSLfatal() already called */
+                    return WORK_ERROR;
+
+                    // send the application data encrypted by client traffic key to the server side
+
+                    char message[100] = "hello";
+                    printf("sending application data from client to server : %s\n", message);
+                    SSL_write(s, message, 6); // problem : message가 encrypt 되어 가지 않는다.
+
+                    //  load the tmp to reset the cipher state
+                    *s = tmp;
+
+                    if (SSL_IS_DTLS(s)) {
+#ifndef OPENSSL_NO_SCTP
+                        if (s->hit) {
+                            /*
+                             * Change to new shared key of SCTP-Auth, will be ignored if
+                             * no SCTP used.
+                             */
+                            BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_SCTP_NEXT_AUTH_KEY,
+                                     0, NULL);
+                        }
 #endif
 
-                dtls1_reset_seq_numbers(s, SSL3_CC_WRITE);
-            }
+dtls1_reset_seq_numbers(s, SSL3_CC_WRITE);
+                    }
 
-            // send the packet
-            if (!statem_flush(s)) {
-                return WORK_MORE_A;
+                    // send the packet
+                    if (!statem_flush(s)) {
+                        return WORK_MORE_A;
+                    }
+                    // back to the original method
+                    s->method = TLS_client_method();
             }
-            // back to the original method
-            s->method = TLS_client_method();
             break;
         case TLS_ST_CW_END_OF_EARLY_DATA:
             /*
@@ -1513,6 +1520,7 @@ int ossl_statem_client_construct_message(SSL *s, WPACKET *pkt,
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_BAD_HANDSHAKE_STATE);
             return 0;
 
+        case TLS_ST_CW_DNS_APPLICATION:
         case TLS_ST_CW_CHANGE:
             if (SSL_IS_DTLS(s))
                 *confunc = dtls_construct_change_cipher_spec;

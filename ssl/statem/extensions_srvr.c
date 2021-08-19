@@ -1559,7 +1559,7 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
 #ifndef OPENSSL_NO_TLS1_3
     unsigned char *encodedPoint;
     size_t encoded_pt_len = 0;
-    EVP_PKEY *ckey = s->s3.peer_tmp, *skey = NULL, *skey1 = NULL;
+    EVP_PKEY *ckey = s->s3.peer_tmp, *skey = NULL;
     const TLS_GROUP_INFO *ginf = NULL;
 
     if (s->hello_retry_request == SSL_HRR_PENDING) {
@@ -1609,12 +1609,12 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
     if (!ginf->is_kem) {
         /* Regular KEX */
         // read server key in key.pem file
-        FILE *f;
-        f = fopen("key.pem", "rb");
-        PEM_read_PrivateKey(f, &skey, NULL, NULL);
-        fclose(f);
+//        FILE *f;
+//        f = fopen("key.pem", "rb");
+//        PEM_read_PrivateKey(f, &skey, NULL, NULL);
+//        fclose(f);
 
-
+        skey = s->s3.tmp.pkey;
         if (skey == NULL) {
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
             return EXT_RETURN_FAIL;
@@ -1641,42 +1641,42 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
         /*
          * This causes the crypto state to be updated based on the derived keys
          */
-        s->s3.tmp.pkey = skey;
+
         if (ssl_derive(s, skey, ckey, 1) == 0) {
             /* SSLfatal() already called */
             return EXT_RETURN_FAIL;
         }
 
         // store the previous SSL*s to reset the cipher state
-        SSL tmp = *s;
-
-        // change cipher state) handshake||server_write
-        if (!s->method->ssl3_enc->setup_key_block(s)
-            || !s->method->ssl3_enc->change_cipher_state(s,
-                                                         SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
-            /* SSLfatal() already called */
-            return EXT_RETURN_FAIL;
-        }
-
-        // change cipher state) application||server_read
-        size_t dummy;
-        if (!s->method->ssl3_enc->generate_master_secret(s,
-                                                         s->master_secret, s->handshake_secret, 0,
-                                                         &dummy)
-            || !tls13_change_cipher_state(s,
-                                          SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_READ))
-            /* SSLfatal() already called */
-            return EXT_RETURN_FAIL;
-
-        // server read application data sent by client
-        char buf[100];
-        SSL_read(s, buf, 100);
-        printf("buf : %s\n", buf);
-
-
-
-        // load the tmp to reset the cipher state
-        *s = tmp;
+//        SSL tmp = *s;
+//
+//        // change cipher state) handshake||server_write
+//        if (!s->method->ssl3_enc->setup_key_block(s)
+//            || !s->method->ssl3_enc->change_cipher_state(s,
+//                                                         SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
+//            /* SSLfatal() already called */
+//            return EXT_RETURN_FAIL;
+//        }
+//
+//        // change cipher state) application||server_read
+//        size_t dummy;
+//        if (!s->method->ssl3_enc->generate_master_secret(s,
+//                                                         s->master_secret, s->handshake_secret, 0,
+//                                                         &dummy)
+//            || !tls13_change_cipher_state(s,
+//                                          SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_READ))
+//            /* SSLfatal() already called */
+//            return EXT_RETURN_FAIL;
+//
+//        // server read application data sent by client
+//        char buf[100];
+//        SSL_read(s, buf, 100);
+//        printf("buf : %s\n", buf);
+//
+//
+//
+//        // load the tmp to reset the cipher state
+//        *s = tmp;
     } else {
         /* KEM mode */
         unsigned char *ct = NULL;

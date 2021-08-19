@@ -1172,7 +1172,7 @@ static int statem_do_write(SSL *s) {
     OSSL_STATEM *st = &s->statem;
 
     if (st->hand_state == TLS_ST_CW_CHANGE
-        || st->hand_state == TLS_ST_SW_CHANGE) {
+        || st->hand_state == TLS_ST_SW_CHANGE || st->hand_state == TLS_ST_CW_DNS_APPLICATION) {
         if (SSL_IS_DTLS(s))
             return dtls1_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
         else {
