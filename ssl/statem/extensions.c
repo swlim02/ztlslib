@@ -12,6 +12,7 @@
 # include <spt_extensions.h> /* timeval */
 #endif
 
+
 #include <string.h>
 #include "internal/nelem.h"
 #include "internal/cryptlib.h"
