@@ -1799,10 +1799,10 @@ int tls_parse_stoc_key_share(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
     const TLS_GROUP_INFO *ginf = NULL;
 
     /* Sanity check */
-    if (ckey == NULL || s->s3.peer_tmp != NULL) {
-        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-        return 0;
-    }
+//    if (ckey == NULL || s->s3.peer_tmp != NULL) {
+//        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+//        return 0;
+//    }
 
     if (!PACKET_get_net_2(pkt, &group_id)) {
         SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);

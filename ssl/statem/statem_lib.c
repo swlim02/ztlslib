@@ -563,6 +563,7 @@ MSG_PROCESS_RETURN tls_process_cert_verify(SSL *s, PACKET *pkt)
 
 int tls_construct_finished(SSL *s, WPACKET *pkt)
 {
+    Log("start\n");
     size_t finish_md_len;
     const char *sender;
     size_t slen;
@@ -571,18 +572,20 @@ int tls_construct_finished(SSL *s, WPACKET *pkt)
     if (!s->server && s->post_handshake_auth != SSL_PHA_REQUESTED)
         s->statem.cleanuphand = 1;
 
+    Log("scope 1\n");
     /*
      * We only change the keys if we didn't already do this when we sent the
      * client certificate
      */
-    if (SSL_IS_TLS13(s)
-            && !s->server
+    s->method = tlsv1_3_client_method();
+    if (    SSL_IS_TLS13(s) &&!s->server
             && s->s3.tmp.cert_req == 0
-            && (!s->method->ssl3_enc->change_cipher_state(s,
+            && (!s->method->ssl3_enc->setup_key_block(s) || !s->method->ssl3_enc->change_cipher_state(s,
                     SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_WRITE))) {;
         /* SSLfatal() already called */
         return 0;
     }
+    Log("scope 2\n");
 
     if (s->server) {
         sender = s->method->ssl3_enc->server_finished_label;
@@ -591,7 +594,7 @@ int tls_construct_finished(SSL *s, WPACKET *pkt)
         sender = s->method->ssl3_enc->client_finished_label;
         slen = s->method->ssl3_enc->client_finished_label_len;
     }
-
+    Log("scope 3\n");
     finish_md_len = s->method->ssl3_enc->final_finish_mac(s,
                                                           sender, slen,
                                                           s->s3.tmp.finish_md);
@@ -879,7 +882,8 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
         }
     }
 
-    if(s->early_data_state == SSL_DNS && !s->server){
+    if(s->early_data_state == SSL_DNS_FINISHED_WRITING && !s->server){
+        s->early_data_state = SSL_DNS_FINISHED_READING;
         SSL tmp = *s;
         size_t dummy;
         if (!s->method->ssl3_enc->generate_master_secret(s,
@@ -896,6 +900,25 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
         Log("Server->Client DNS application data\n");
         printf("buf : %s\n", buf);
         *s=tmp;
+    }
+
+    if(s->early_data_state == SSL_DNS_FINISHED_READING && s->server){
+        SSL tmp = *s;
+        size_t dummy;
+        if (!s->method->ssl3_enc->generate_master_secret(s,
+                                                         s->master_secret, s->handshake_secret, 0,
+                                                         &dummy)
+                                                         || !tls13_change_cipher_state(s,
+                                                                                       SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_READ))
+            /* SSLfatal() already called */
+            return MSG_PROCESS_ERROR;
+
+            // server read application data sent by client
+            char buf[100];
+            SSL_read(s, buf, 100);
+            Log("Server->Client DNS application data\n");
+            printf("buf : %s\n", buf);
+            *s=tmp;
     }
 
     return MSG_PROCESS_FINISHED_READING;

@@ -256,10 +256,12 @@ void ossl_statem_set_hello_verify_done(SSL *s) {
 }
 
 int ossl_statem_connect(SSL *s) {
+//    Log("ossl connect \n");
     return state_machine(s, 0);
 }
 
 int ossl_statem_accept(SSL *s) {
+//    Log("ossl accept \n");
     return state_machine(s, 1);
 }
 
@@ -319,6 +321,7 @@ static int state_machine(SSL *s, int server) {
     int ret = -1;
     int ssret;
 
+    printf("%d\n", st->state);
     if (st->state == MSG_FLOW_ERROR) {
         /* Shouldn't have been called if we're already in the error state */
         return -1;
@@ -492,7 +495,7 @@ static int state_machine(SSL *s, int server) {
                 /*
              * Implement 3
              */
-                printf("ssret is SUB_STATE_END_HANDHSAKE.\n");
+                printf("ssret is SUB_STATE_END_HANDHSAKE.aa\n");
                 st->state = MSG_FLOW_FINISHED;
             } else {
                 /* NBIO or error */
@@ -542,7 +545,6 @@ static int state_machine_reduce(SSL *s, int server) {
     OSSL_STATEM *st = &s->statem;
     int ret = -1;
     int ssret;
-
     if (st->state == MSG_FLOW_ERROR) {
         /* Shouldn't have been called if we're already in the error state */
         return -1;
@@ -1042,6 +1044,8 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                  */
                 if (!transition(s, mt))
                     return SUB_STATE_ERROR;
+                printf("tmp size : %zu\n", s->s3.tmp.message_size);
+                printf("max size : %zu\n", max_message_size(s));
                 if (s->s3.tmp.message_size > max_message_size(s)) {
                     SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER,
                              SSL_R_EXCESSIVE_MESSAGE_SIZE);
@@ -1154,7 +1158,7 @@ static int statem_do_write(SSL *s) {
     OSSL_STATEM *st = &s->statem;
 
     if (st->hand_state == TLS_ST_CW_CHANGE
-        || st->hand_state == TLS_ST_SW_CHANGE || st->hand_state == TLS_ST_CW_DNS_APPLICATION) {
+        || st->hand_state == TLS_ST_SW_CHANGE || st->hand_state == TLS_ST_CW_DNS_CCS) {
         if (SSL_IS_DTLS(s))
             return dtls1_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
         else {
@@ -1242,7 +1246,7 @@ static SUB_STATE_RETURN write_state_machine(SSL *s) {
     while (1) {
         switch (st->write_state) {
             case WRITE_STATE_TRANSITION:
-//            printf("WRITE_STATE_TRANSITION in write_state_machine func \n");
+                Log("WRITE_STATE_TRANSITION in write_state_machine func \n");
                 if (cb != NULL) {
                     /* Notify callback of an impending state change */
                     if (s->server)
@@ -1250,15 +1254,16 @@ static SUB_STATE_RETURN write_state_machine(SSL *s) {
                     else
                         cb(s, SSL_CB_CONNECT_LOOP, 1);
                 }
+                printf("    (write_state_machine) hand_state -> %s\n", SSL_state_string_long(s));
                 switch (transition(s)) {
                     case WRITE_TRAN_CONTINUE:
-//                printf("transition(s) is WRITE_TRAN_CONTINUE in write_state_machine func \n");
+                        Log("transition(s) is WRITE_TRAN_CONTINUE in write_state_machine func \n");
                         st->write_state = WRITE_STATE_PRE_WORK;
                         st->write_state_work = WORK_MORE_A;
                         break;
 
                     case WRITE_TRAN_FINISHED:
-//                printf("transition(s) is WRITE_TRAN_FINISHED in write_state_machine func \n");
+                        Log("transition(s) is WRITE_TRAN_FINISHED in write_state_machine func \n");
                         return SUB_STATE_FINISHED;
                         break;
 
@@ -1416,7 +1421,6 @@ static SUB_STATE_RETURN write_state_machine_reduce(SSL *s) {
                 break;
 
             case WRITE_STATE_PRE_WORK:
-                //            printf("WRITE_STATE_PRE_WORK in write_state_machine func \n");
                 switch (st->write_state_work = pre_work(s, st->write_state_work)) {
                     case WORK_ERROR:
                         check_fatal(s);
@@ -1427,7 +1431,6 @@ static SUB_STATE_RETURN write_state_machine_reduce(SSL *s) {
                         return SUB_STATE_ERROR;
 
                     case WORK_FINISHED_CONTINUE:
-                        //                printf("WRITE_FINISHED_CONTINUE in write_state_machine func \n");
                         st->write_state = WRITE_STATE_SEND;
                         break;
 
@@ -1479,7 +1482,6 @@ static SUB_STATE_RETURN write_state_machine_reduce(SSL *s) {
                 /* Fall through */
 
             case WRITE_STATE_POST_WORK:
-                //            printf("WRITE_STATE_POST_WORK in write_state_machine func \n");
                 switch (st->write_state_work = post_work(s, st->write_state_work)) {
                     case WORK_ERROR:
                         check_fatal(s);

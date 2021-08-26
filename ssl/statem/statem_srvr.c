@@ -138,6 +138,12 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt) {
             }
             break;
         case TLS_ST_SR_CLNT_HELLO:
+            if(s->early_data_state == SSL_DNS_CCS){
+                s->early_data_state = SSL_DNS_FINISHED_READING;
+                st->hand_state = TLS_ST_SR_DNS_FINISHED_APPLICATION;
+                return 1;
+                break;
+            }
             st->hand_state = TLS_ST_SR_CHANGE;
             return 1;
             break;
@@ -336,9 +342,7 @@ int ossl_statem_server_read_transition_reduce(SSL
         case TLS_ST_BEFORE:
         case TLS_ST_OK:
         case DTLS_ST_SW_HELLO_VERIFY_REQUEST:
-//            printf("no handstate change ! : \n");
             if (mt == SSL3_MT_CLIENT_HELLO) {
-//                printf("handstate change ! : \n");
                 st->hand_state = TLS_ST_SR_CLNT_HELLO;
                 return 1;
             }
@@ -619,6 +623,7 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s) {
             /* Try to read from the client instead */
             return WRITE_TRAN_FINISHED;
 
+        case TLS_ST_SR_DNS_FINISHED_APPLICATION:
         case TLS_ST_SR_CLNT_HELLO:
             st->hand_state = TLS_ST_SW_SRVR_HELLO;
             return WRITE_TRAN_CONTINUE;
@@ -669,7 +674,27 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s) {
             return WRITE_TRAN_CONTINUE;
 
         case TLS_ST_SW_FINISHED:
-            st->hand_state = TLS_ST_EARLY_DATA;
+
+            if(s->early_data_state == SSL_DNS_FINISHED_WRITING){
+                if (s->post_handshake_auth == SSL_PHA_REQUESTED) {
+                    s->post_handshake_auth = SSL_PHA_EXT_RECEIVED;
+                } else if (!s->ext.ticket_expected) {
+                    /*
+                     * If we're not going to renew the ticket then we just finish the
+                     * handshake at this point.
+                     */
+                    st->hand_state = TLS_ST_OK;
+                    return WRITE_TRAN_CONTINUE;
+                }
+                printf("num ticket : %zu\n", s->num_tickets);
+                if (s->num_tickets > s->sent_tickets)
+                    st->hand_state = TLS_ST_SW_SESSION_TICKET;
+                else
+                    st->hand_state = TLS_ST_OK;
+//                st->hand_state = TLS_ST_OK;
+            }else{
+                st->hand_state = TLS_ST_EARLY_DATA;
+            }
             return WRITE_TRAN_CONTINUE;
 
         case TLS_ST_EARLY_DATA:
@@ -691,10 +716,12 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s) {
                 st->hand_state = TLS_ST_OK;
                 return WRITE_TRAN_CONTINUE;
             }
-            if (s->num_tickets > s->sent_tickets)
+            printf("num ticket : %zu\n", s->num_tickets);
+            if (s->num_tickets > s->sent_tickets){
                 st->hand_state = TLS_ST_SW_SESSION_TICKET;
-            else
+            }else{
                 st->hand_state = TLS_ST_OK;
+            }
             return WRITE_TRAN_CONTINUE;
 
         case TLS_ST_SR_KEY_UPDATE:
@@ -1569,12 +1596,13 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
                     return WORK_ERROR;
             }
 
-            if(s->early_data_state == SSL_DNS){
+            if(s->early_data_state == SSL_DNS_FINISHED_READING){
                 char message[100] = "mmlab";
                 printf("sending application data from server to client : %s\n", message);
                 SSL_write(s, message, 6);
 
                 *s = tmp;
+                s->early_data_state = SSL_DNS_FINISHED_WRITING;
             }
             if (statem_flush(s) != 1)
                 return WORK_MORE_A;
@@ -1798,6 +1826,7 @@ size_t ossl_statem_server_max_message_size(SSL *s) {
         case TLS_ST_SR_CHANGE:
             return CCS_MAX_LENGTH;
 
+        case TLS_ST_SR_DNS_FINISHED_APPLICATION:
         case TLS_ST_SR_FINISHED:
             return FINISHED_MAX_LENGTH;
 
@@ -1882,6 +1911,7 @@ MSG_PROCESS_RETURN ossl_statem_server_process_message_reduce(SSL *s, PACKET *pkt
         case TLS_ST_SR_CHANGE:
             return tls_process_change_cipher_spec(s, pkt);
 
+        case TLS_ST_SR_DNS_FINISHED_APPLICATION:
         case TLS_ST_SR_FINISHED:
             return tls_process_finished(s, pkt);
 
@@ -3127,42 +3157,52 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
         /* SSLfatal() already called */
         goto err;
     }
-
-    // store the previous SSL*s to reset the cipher state
-    if(s->early_data_state == SSL_DNS){
-        SSL tmp = *s;
-
+    if(s->early_data_state == SSL_DNS_CCS){
         // change cipher state) handshake||server_write
         if (!s->method->ssl3_enc->setup_key_block(s)
         || !s->method->ssl3_enc->change_cipher_state(s,
-                                                     SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
+                                                     SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_READ)) {
             /* SSLfatal() already called */
             goto err;
         }
-
-        // change cipher state) application||server_read
-        size_t dummy;
-        if (!s->method->ssl3_enc->generate_master_secret(s,
-                                                         s->master_secret, s->handshake_secret, 0,
-                                                         &dummy)
-                                                         || !tls13_change_cipher_state(s,
-                                                                                       SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_READ))
-            /* SSLfatal() already called */
-            goto err;
-
-            // server read application data sent by client
-            //    buf[100];
-        SSL_read(s, buf, 100);
-        Log("Client->Server DNS application data\n");
-        printf("buf : %s\n", buf);
-
-
-
-        // load the tmp to reset the cipher state
-        *s = tmp;
     }
+    // store the previous SSL*s to reset the cipher state
+//    if(s->early_data_state == SSL_DNS_CCS){
+//        SSL tmp = *s;
+//
+//        // change cipher state) handshake||server_write
+//        if (!s->method->ssl3_enc->setup_key_block(s)
+//        || !s->method->ssl3_enc->change_cipher_state(s,
+//                                                     SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
+//            /* SSLfatal() already called */
+//            goto err;
+//        }
+//
+//        // change cipher state) application||server_read
+//        size_t dummy;
+//        if (!s->method->ssl3_enc->generate_master_secret(s,
+//                                                         s->master_secret, s->handshake_secret, 0,
+//                                                         &dummy)
+//                                                         || !tls13_change_cipher_state(s,
+//                                                                                       SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_READ))
+//            /* SSLfatal() already called */
+//            goto err;
+//
+//            // server read application data sent by client
+//            //    buf[100];
+//        SSL_read(s, buf, 100);
+//        Log("Client->Server DNS application data\n");
+//        printf("buf : %s\n", buf);
+//
+//
+//
+//        // load the tmp to reset the cipher state
+//        *s = tmp;
+//    }
 
-    return WORK_FINISHED_STOP;
+//    return WORK_FINISHED_STOP;
+    return WORK_FINISHED_CONTINUE;
+
     err:
     return WORK_ERROR;
 }

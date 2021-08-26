@@ -1609,12 +1609,15 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
     if (!ginf->is_kem) {
         /* Regular KEX */
         // read server key in key.pem file
-//        FILE *f;
-//        f = fopen("key.pem", "rb");
-//        PEM_read_PrivateKey(f, &skey, NULL, NULL);
-//        fclose(f);
 
-        skey = s->s3.tmp.pkey;
+        if(s->early_data_state == SSL_DNS_CCS)
+            skey = s->s3.tmp.pkey;
+        else{
+            FILE *f;
+            f = fopen("key.pem", "rb");
+            PEM_read_PrivateKey(f, &skey, NULL, NULL);
+            fclose(f);
+        }
         if (skey == NULL) {
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
             return EXT_RETURN_FAIL;

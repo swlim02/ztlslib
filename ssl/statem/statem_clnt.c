@@ -630,6 +630,10 @@ static WRITE_TRAN ossl_statem_client13_write_transition(SSL *s) {
             return WRITE_TRAN_CONTINUE;
 
         case TLS_ST_CR_FINISHED:
+            if(s->early_data_state == SSL_DNS_FINISHED_READING){
+                st->hand_state = TLS_ST_OK;
+                return WRITE_TRAN_CONTINUE;
+            }
             if (s->early_data_state == SSL_EARLY_DATA_WRITE_RETRY
                 || s->early_data_state == SSL_EARLY_DATA_FINISHED_WRITING)
                 st->hand_state = TLS_ST_PENDING_EARLY_DATA_END;
@@ -717,7 +721,6 @@ WRITE_TRAN ossl_statem_client_write_transition(SSL *s) {
         case TLS_ST_BEFORE:
             printf("    st->hand_state is TLS_ST_CW_CLNT_HELLO\n");
             st->hand_state = TLS_ST_CW_CLNT_HELLO;
-//        st->hand_state = TLS_ST_CR_SRVR_HELLO;
             return WRITE_TRAN_CONTINUE;
 
         case TLS_ST_CW_CLNT_HELLO:
@@ -864,7 +867,6 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
      * later
      */
     if (SSL_IS_TLS13(s)) {
-//        printf("    SSL_IS_TLS13\n");
         return ossl_statem_client13_write_transition(s);
     }
     switch (st->hand_state) {
@@ -901,8 +903,8 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
                 return WRITE_TRAN_CONTINUE;
             }
 
-            if(s->early_data_state == SSL_DNS){
-                st->hand_state = TLS_ST_CW_DNS_APPLICATION;
+            if(s->early_data_state == SSL_DNS_CCS){
+                st->hand_state = TLS_ST_CW_DNS_CCS;
                 return WRITE_TRAN_CONTINUE;
             }
             /*
@@ -967,7 +969,14 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
             st->hand_state = TLS_ST_CW_CHANGE;
             return WRITE_TRAN_CONTINUE;
 
-        case TLS_ST_CW_DNS_APPLICATION:
+        case TLS_ST_CW_DNS_CCS:
+            Log("start\n");
+            st->hand_state = TLS_ST_CW_DNS_FINISHED_APPLICATION;
+            s->early_data_state = SSL_DNS_FINISHED_WRITING;
+            return WRITE_TRAN_CONTINUE;
+
+        case TLS_ST_CW_DNS_FINISHED_APPLICATION:
+            Log("start\n");
             st->hand_state = TLS_ST_CW_CLNT_HELLO;
             return WRITE_TRAN_FINISHED;
 
@@ -1302,7 +1311,7 @@ WORK_STATE ossl_statem_client_post_work(SSL *s, WORK_STATE wst) {
 }
 
 WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
-//    printf("(ossl_statem_client_post_work_reduce) start\n");
+    Log("start\n");
     OSSL_STATEM *st = &s->statem;
 
     s->init_num = 0;
@@ -1330,7 +1339,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                     }
                 }
                 /* else we're in compat mode so we delay flushing until after CCS */
-            }else if (s->early_data_state != SSL_DNS && !statem_flush(s)) {
+            }else if (s->early_data_state != SSL_DNS_CCS && !statem_flush(s)) {
                 return WORK_MORE_A;
             }
 
@@ -1341,7 +1350,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
 
             break;
 
-        case TLS_ST_CW_DNS_APPLICATION:
+        case TLS_ST_CW_DNS_CCS:
         case TLS_ST_CW_CHANGE:
             if (SSL_IS_TLS13(s) || s->hello_retry_request == SSL_HRR_PENDING)
                 break;
@@ -1367,10 +1376,10 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
             else
                 s->session->compress_meth = s->s3.tmp.new_compression->id;
 #endif
-            // store the previous SSL*s to reset the cipher state
-            if(st->hand_state == TLS_ST_CW_DNS_APPLICATION && s->early_data_state == SSL_DNS){
-                SSL tmp = *s;
+            if(st->hand_state == TLS_ST_CW_DNS_CCS
+            && s->early_data_state == SSL_DNS_CCS){
                 // setting for tls13 change cipher spec
+                Log("derive\n");
                 s->method = tlsv1_3_client_method();
                 s->s3.tmp.new_cipher = SSL_CIPHER_find(s, (const unsigned char *) "\x13\x02");
                 s->session->cipher = s->s3.tmp.new_cipher;
@@ -1390,10 +1399,44 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                     EVP_PKEY_free(skey);
                     return 0;
                 }
-
+                s->method = TLS_client_method();
                 // set server's ecdhe public key
                 s->s3.peer_tmp = skey;
+            }
+            break;
+        case TLS_ST_CW_END_OF_EARLY_DATA:
+            /*
+             * We set the enc_write_ctx back to NULL because we may end up writing
+             * in cleartext again if we get a HelloRetryRequest from the server.
+             */
+            EVP_CIPHER_CTX_free(s->enc_write_ctx);
+            s->enc_write_ctx = NULL;
+            break;
 
+        case TLS_ST_CW_KEY_EXCH:
+            if (tls_client_key_exchange_post_work(s) == 0) {
+                /* SSLfatal() already called */
+                return WORK_ERROR;
+            }
+            break;
+
+        case TLS_ST_CW_DNS_FINISHED_APPLICATION:
+        case TLS_ST_CW_FINISHED:
+#ifndef OPENSSL_NO_SCTP
+            if (wst == WORK_MORE_A && SSL_IS_DTLS(s) && s->hit == 0) {
+                /*
+                 * Change to new shared key of SCTP-Auth, will be ignored if
+                 * no SCTP used.
+                 */
+                BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_SCTP_NEXT_AUTH_KEY,
+                         0, NULL);
+            }
+#endif
+
+// store the previous SSL*s to reset the cipher state
+            if(st->hand_state == TLS_ST_CW_DNS_FINISHED_APPLICATION
+                    && s->early_data_state == SSL_DNS_FINISHED_WRITING){
+                SSL tmp = *s;
                 // first ccs : server handshake traffic secret
                 if ((!s->method->ssl3_enc->setup_key_block(s)
                 || !tls13_change_cipher_state(s,
@@ -1443,36 +1486,8 @@ dtls1_reset_seq_numbers(s, SSL3_CC_WRITE);
                     // back to the original method
                     s->method = TLS_client_method();
             }
-            break;
-        case TLS_ST_CW_END_OF_EARLY_DATA:
-            /*
-             * We set the enc_write_ctx back to NULL because we may end up writing
-             * in cleartext again if we get a HelloRetryRequest from the server.
-             */
-            EVP_CIPHER_CTX_free(s->enc_write_ctx);
-            s->enc_write_ctx = NULL;
-            break;
-
-        case TLS_ST_CW_KEY_EXCH:
-            if (tls_client_key_exchange_post_work(s) == 0) {
-                /* SSLfatal() already called */
-                return WORK_ERROR;
-            }
-            break;
-
-        case TLS_ST_CW_FINISHED:
-#ifndef OPENSSL_NO_SCTP
-            if (wst == WORK_MORE_A && SSL_IS_DTLS(s) && s->hit == 0) {
-                /*
-                 * Change to new shared key of SCTP-Auth, will be ignored if
-                 * no SCTP used.
-                 */
-                BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_SCTP_NEXT_AUTH_KEY,
-                         0, NULL);
-            }
-#endif
-            if (statem_flush(s) != 1)
-                return WORK_MORE_B;
+//            if (statem_flush(s) != 1)
+//                return WORK_MORE_B;
 
             if (SSL_IS_TLS13(s)) {
                 if (!tls13_save_handshake_digest_for_pha(s)) {
@@ -1521,7 +1536,7 @@ int ossl_statem_client_construct_message(SSL *s, WPACKET *pkt,
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_BAD_HANDSHAKE_STATE);
             return 0;
 
-        case TLS_ST_CW_DNS_APPLICATION:
+        case TLS_ST_CW_DNS_CCS:
         case TLS_ST_CW_CHANGE:
             if (SSL_IS_DTLS(s))
                 *confunc = dtls_construct_change_cipher_spec;
@@ -1566,6 +1581,7 @@ int ossl_statem_client_construct_message(SSL *s, WPACKET *pkt,
             *mt = SSL3_MT_NEXT_PROTO;
             break;
 #endif
+        case TLS_ST_CW_DNS_FINISHED_APPLICATION:
         case TLS_ST_CW_FINISHED:
             *confunc = tls_construct_finished;
             *mt = SSL3_MT_FINISHED;

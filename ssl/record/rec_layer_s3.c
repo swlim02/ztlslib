@@ -1259,6 +1259,7 @@ int ssl3_write_pending(SSL *s, int type, const unsigned char *buf, size_t len,
 int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
                     size_t len, int peek, size_t *readbytes)
 {
+    Log("start\n");
     int i, j, ret;
     size_t n, curr_rec, num_recs, totalbytes;
     SSL3_RECORD *rr;

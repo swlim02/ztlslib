@@ -3870,8 +3870,8 @@ int SSL_do_handshake(SSL *s)
 
     int dns = 1;
 
-    s->early_data_state = SSL_DNS;
     if(dns){
+        s->early_data_state = SSL_DNS_CCS;
         return SSL_do_handshake_reduce(s);
     }
     printf("==============================================\n");
@@ -3918,9 +3918,17 @@ int SSL_do_handshake_reduce(SSL *s)
     s->method->ssl_renegotiate_check(s, 0);
 
     if (SSL_in_init(s) || SSL_in_before(s)) {
-        if(s->server)   s->handshake_func = ossl_statem_accept_reduce;
-        else    s->handshake_func = ossl_statem_connect_reduce;
-        ret = s->handshake_func(s);
+        if((s->mode & SSL_MODE_ASYNC) && ASYNC_get_current_job() == NULL) {
+            struct ssl_async_args args;
+
+            args.s = s;
+
+            ret = ssl_start_async_job(s, &args, ssl_do_handshake_intern);
+        }else{
+            if(s->server)   s->handshake_func = ossl_statem_accept_reduce;
+            else    s->handshake_func = ossl_statem_connect_reduce;
+            ret = s->handshake_func(s);
+        }
     }
     return ret;
 }
