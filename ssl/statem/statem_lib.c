@@ -853,7 +853,8 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
      * In TLS1.3 we also have to change cipher state and do any final processing
      * of the initial server flight (if we are a client)
      */
-    if (SSL_IS_TLS13(s)) {
+    if (SSL_IS_TLS13(s) && s->early_data_state != SSL_DNS_FINISHED_WRITING &&
+                    s->early_data_state != SSL_DNS_FINISHED_READING) {
         if (s->server) {
             if (s->post_handshake_auth != SSL_PHA_REQUESTED &&
                     !s->method->ssl3_enc->change_cipher_state(s,
@@ -884,8 +885,19 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
 
     if(s->early_data_state == SSL_DNS_FINISHED_WRITING && !s->server){
         s->early_data_state = SSL_DNS_FINISHED_READING;
-        SSL tmp = *s;
         size_t dummy;
+        if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_WRITE)){
+            return MSG_PROCESS_ERROR;
+        }
+        if (!s->method->ssl3_enc->generate_master_secret(s,
+                                                         s->master_secret, s->handshake_secret, 0,
+                                                         &dummy)
+                                                         || !tls13_change_cipher_state(s,
+                                                                                       SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_WRITE))
+            return MSG_PROCESS_ERROR;
+        if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_READ)){
+            return MSG_PROCESS_ERROR;
+        }
         if (!s->method->ssl3_enc->generate_master_secret(s,
                                                          s->master_secret, s->handshake_secret, 0,
                                                          &dummy)
@@ -899,12 +911,14 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
         SSL_read(s, buf, 100);
         Log("Server->Client DNS application data\n");
         printf("buf : %s\n", buf);
-        *s=tmp;
     }
 
     if(s->early_data_state == SSL_DNS_FINISHED_READING && s->server){
         SSL tmp = *s;
         size_t dummy;
+        if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ)){
+            return MSG_PROCESS_ERROR;
+        }
         if (!s->method->ssl3_enc->generate_master_secret(s,
                                                          s->master_secret, s->handshake_secret, 0,
                                                          &dummy)
@@ -916,11 +930,10 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
             // server read application data sent by client
             char buf[100];
             SSL_read(s, buf, 100);
-            Log("Server->Client DNS application data\n");
+            Log("Client->Server DNS application data\n");
             printf("buf : %s\n", buf);
             *s=tmp;
     }
-
     return MSG_PROCESS_FINISHED_READING;
 }
 

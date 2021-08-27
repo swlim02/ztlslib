@@ -1583,10 +1583,24 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
             break;
 
         case TLS_ST_SW_FINISHED:
-            tmp = *s;
+
             if (SSL_IS_TLS13(s)) {
                 /* TLS 1.3 gets the secret size from the handshake md */
+
                 size_t dummy;
+                if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_READ)){
+                    return WORK_ERROR;
+                }
+                if (!s->method->ssl3_enc->generate_master_secret(s,
+                                                                 s->master_secret, s->handshake_secret, 0,
+                                                                 &dummy)
+                                                         || !tls13_change_cipher_state(s,
+                                                                                       SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_READ))
+                    return WORK_ERROR;
+
+                if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_WRITE)){
+                    return WORK_ERROR;
+                }
                 if (!s->method->ssl3_enc->generate_master_secret(s,
                                                                  s->master_secret, s->handshake_secret, 0,
                                                                  &dummy)
@@ -1601,7 +1615,7 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
                 printf("sending application data from server to client : %s\n", message);
                 SSL_write(s, message, 6);
 
-                *s = tmp;
+
                 s->early_data_state = SSL_DNS_FINISHED_WRITING;
             }
             if (statem_flush(s) != 1)
