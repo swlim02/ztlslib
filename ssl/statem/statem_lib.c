@@ -563,7 +563,7 @@ MSG_PROCESS_RETURN tls_process_cert_verify(SSL *s, PACKET *pkt)
 
 int tls_construct_finished(SSL *s, WPACKET *pkt)
 {
-    Log("start\n");
+//    Log("start\n");
     size_t finish_md_len;
     const char *sender;
     size_t slen;
@@ -572,7 +572,7 @@ int tls_construct_finished(SSL *s, WPACKET *pkt)
     if (!s->server && s->post_handshake_auth != SSL_PHA_REQUESTED)
         s->statem.cleanuphand = 1;
 
-    Log("scope 1\n");
+//    Log("scope 1\n");
     /*
      * We only change the keys if we didn't already do this when we sent the
      * client certificate
@@ -585,7 +585,7 @@ int tls_construct_finished(SSL *s, WPACKET *pkt)
         /* SSLfatal() already called */
         return 0;
     }
-    Log("scope 2\n");
+//    Log("scope 2\n");
 
     if (s->server) {
         sender = s->method->ssl3_enc->server_finished_label;
@@ -594,7 +594,7 @@ int tls_construct_finished(SSL *s, WPACKET *pkt)
         sender = s->method->ssl3_enc->client_finished_label;
         slen = s->method->ssl3_enc->client_finished_label_len;
     }
-    Log("scope 3\n");
+//    Log("scope 3\n");
     finish_md_len = s->method->ssl3_enc->final_finish_mac(s,
                                                           sender, slen,
                                                           s->s3.tmp.finish_md);

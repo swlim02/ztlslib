@@ -1044,8 +1044,8 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                  */
                 if (!transition(s, mt))
                     return SUB_STATE_ERROR;
-                printf("tmp size : %zu\n", s->s3.tmp.message_size);
-                printf("max size : %zu\n", max_message_size(s));
+//                printf("tmp size : %zu\n", s->s3.tmp.message_size);
+//                printf("max size : %zu\n", max_message_size(s));
                 if (s->s3.tmp.message_size > max_message_size(s)) {
                     SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER,
                              SSL_R_EXCESSIVE_MESSAGE_SIZE);
@@ -1246,7 +1246,7 @@ static SUB_STATE_RETURN write_state_machine(SSL *s) {
     while (1) {
         switch (st->write_state) {
             case WRITE_STATE_TRANSITION:
-                Log("WRITE_STATE_TRANSITION in write_state_machine func \n");
+//                Log("WRITE_STATE_TRANSITION in write_state_machine func \n");
                 if (cb != NULL) {
                     /* Notify callback of an impending state change */
                     if (s->server)
@@ -1254,16 +1254,16 @@ static SUB_STATE_RETURN write_state_machine(SSL *s) {
                     else
                         cb(s, SSL_CB_CONNECT_LOOP, 1);
                 }
-                printf("    (write_state_machine) hand_state -> %s\n", SSL_state_string_long(s));
+//                printf("    (write_state_machine) hand_state -> %s\n", SSL_state_string_long(s));
                 switch (transition(s)) {
                     case WRITE_TRAN_CONTINUE:
-                        Log("transition(s) is WRITE_TRAN_CONTINUE in write_state_machine func \n");
+//                        Log("transition(s) is WRITE_TRAN_CONTINUE in write_state_machine func \n");
                         st->write_state = WRITE_STATE_PRE_WORK;
                         st->write_state_work = WORK_MORE_A;
                         break;
 
                     case WRITE_TRAN_FINISHED:
-                        Log("transition(s) is WRITE_TRAN_FINISHED in write_state_machine func \n");
+//                        Log("transition(s) is WRITE_TRAN_FINISHED in write_state_machine func \n");
                         return SUB_STATE_FINISHED;
                         break;
 

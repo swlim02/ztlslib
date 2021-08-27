@@ -686,7 +686,7 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s) {
                     st->hand_state = TLS_ST_OK;
                     return WRITE_TRAN_CONTINUE;
                 }
-                printf("num ticket : %zu\n", s->num_tickets);
+//                printf("num ticket : %zu\n", s->num_tickets);
                 if (s->num_tickets > s->sent_tickets)
                     st->hand_state = TLS_ST_SW_SESSION_TICKET;
                 else
@@ -716,7 +716,7 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s) {
                 st->hand_state = TLS_ST_OK;
                 return WRITE_TRAN_CONTINUE;
             }
-            printf("num ticket : %zu\n", s->num_tickets);
+//            printf("num ticket : %zu\n", s->num_tickets);
             if (s->num_tickets > s->sent_tickets){
                 st->hand_state = TLS_ST_SW_SESSION_TICKET;
             }else{

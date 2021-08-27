@@ -970,13 +970,13 @@ WRITE_TRAN ossl_statem_client_write_transition_reduce(SSL *s) {
             return WRITE_TRAN_CONTINUE;
 
         case TLS_ST_CW_DNS_CCS:
-            Log("start\n");
+//            Log("start\n");
             st->hand_state = TLS_ST_CW_DNS_FINISHED_APPLICATION;
             s->early_data_state = SSL_DNS_FINISHED_WRITING;
             return WRITE_TRAN_CONTINUE;
 
         case TLS_ST_CW_DNS_FINISHED_APPLICATION:
-            Log("start\n");
+//            Log("start\n");
             st->hand_state = TLS_ST_CW_CLNT_HELLO;
             return WRITE_TRAN_FINISHED;
 
@@ -1311,7 +1311,7 @@ WORK_STATE ossl_statem_client_post_work(SSL *s, WORK_STATE wst) {
 }
 
 WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
-    Log("start\n");
+//    Log("start\n");
     OSSL_STATEM *st = &s->statem;
 
     s->init_num = 0;
@@ -1379,7 +1379,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
             if(st->hand_state == TLS_ST_CW_DNS_CCS
             && s->early_data_state == SSL_DNS_CCS){
                 // setting for tls13 change cipher spec
-                Log("derive\n");
+//                Log("derive\n");
                 s->method = tlsv1_3_client_method();
                 s->s3.tmp.new_cipher = SSL_CIPHER_find(s, (const unsigned char *) "\x13\x02");
                 s->session->cipher = s->s3.tmp.new_cipher;
