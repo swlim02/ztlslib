@@ -1259,7 +1259,6 @@ int ssl3_write_pending(SSL *s, int type, const unsigned char *buf, size_t len,
 int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
                     size_t len, int peek, size_t *readbytes)
 {
-    Log("start\n");
     int i, j, ret;
     size_t n, curr_rec, num_recs, totalbytes;
     SSL3_RECORD *rr;
@@ -1268,7 +1267,6 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
     int is_tls13 = SSL_IS_TLS13(s);
 
     rbuf = &s->rlayer.rbuf;
-    Log("1\n");
 
     if (!SSL3_BUFFER_is_initialised(rbuf)) {
         /* Not initialized yet */
@@ -1277,7 +1275,6 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
             return -1;
         }
     }
-    Log("2\n");
 
     if ((type && (type != SSL3_RT_APPLICATION_DATA)
          && (type != SSL3_RT_HANDSHAKE)) || (peek
@@ -1286,12 +1283,10 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
         return -1;
     }
-    Log("3\n");
 
     if ((type == SSL3_RT_HANDSHAKE) && (s->rlayer.handshake_fragment_len > 0))
         /* (partially) satisfy request from storage */
     {
-        Log("4\n");
 
         unsigned char *src = s->rlayer.handshake_fragment;
         unsigned char *dst = buf;
@@ -1315,14 +1310,12 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
         *readbytes = n;
         return 1;
     }
-    Log("5\n");
 
     /*
      * Now s->rlayer.handshake_fragment_len == 0 if type == SSL3_RT_HANDSHAKE.
      */
 
     if (!ossl_statem_get_in_handshake(s) && SSL_in_init(s)) {
-        Log("6\n");
 
         /* type == SSL3_RT_APPLICATION_DATA */
         i = s->handshake_func(s);
@@ -1344,25 +1337,17 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
      */
     rr = s->rlayer.rrec;
     num_recs = RECORD_LAYER_get_numrpipes(&s->rlayer);
-    Log("7\n");
 
     do {
-        Log("e 1\n");
         /* get new records if necessary */
         if (num_recs == 0) {
-            Log("e 2\n");
             ret = ssl3_get_record(s);
             if (ret <= 0) {
-                Log("e 3\n");
-
                 /* SSLfatal() already called if appropriate */
                 return ret;
             }
             num_recs = RECORD_LAYER_get_numrpipes(&s->rlayer);
-            Log("e 5\n");
             if (num_recs == 0) {
-                Log("e 6\n");
-
                 /* Shouldn't happen */
                 SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
                 return -1;
@@ -1377,8 +1362,6 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
             num_recs = 0;
             curr_rec = 0;
         }
-        Log("e 7\n");
-
     } while (num_recs == 0);
     rr = &rr[curr_rec];
 
@@ -1389,8 +1372,6 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
                  SSL_R_MIXED_HANDSHAKE_AND_NON_HANDSHAKE_DATA);
         return -1;
     }
-    Log("8\n");
-
     /*
      * Reset the count of consecutive warning alerts if we've got a non-empty
      * record that isn't an alert.
@@ -1423,8 +1404,6 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
         || (SSL3_RECORD_get_type(rr) == SSL3_RT_CHANGE_CIPHER_SPEC
             && type == SSL3_RT_HANDSHAKE && recvd_type != NULL
             && !is_tls13)) {
-        Log("9\n");
-
         /*
          * SSL3_RT_APPLICATION_DATA or
          * SSL3_RT_HANDSHAKE or
@@ -1507,7 +1486,6 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
         *readbytes = totalbytes;
         return 1;
     }
-    Log("10\n");
     /*
      * If we get here, then type != rr->type; if we have a handshake message,
      * then it was unexpected (Hello Request or Client Hello) or invalid (we
@@ -1527,8 +1505,6 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
         return -1;
     }
-    Log("11\n");
-
     if (s->method->version == TLS_ANY_VERSION
         && (s->server || rr->type != SSL3_RT_ALERT)) {
         /*
@@ -1667,8 +1643,6 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
             return -1;
         }
     }
-    Log("12\n");
-
     /*
      * For handshake data we have 'fragment' storage, so fill that so that we
      * can process the header at a fixed place. This is done after the
@@ -1748,7 +1722,6 @@ int ssl3_read_bytes(SSL *s, int type, int *recvd_type, unsigned char *buf,
         }
         goto start;
     }
-    Log("13\n");
 
     switch (SSL3_RECORD_get_type(rr)) {
     default:
