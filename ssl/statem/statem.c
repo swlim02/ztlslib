@@ -321,7 +321,6 @@ static int state_machine(SSL *s, int server) {
     int ret = -1;
     int ssret;
 
-    printf("%d\n", st->state);
     if (st->state == MSG_FLOW_ERROR) {
         /* Shouldn't have been called if we're already in the error state */
         return -1;
@@ -359,20 +358,15 @@ static int state_machine(SSL *s, int server) {
             /*
              * Implement
              */
-            printf("st->state : MSG_FLOW_UNINITED\n");
             st->hand_state = TLS_ST_BEFORE;
             st->request_state = TLS_ST_BEFORE;
-        } else {
-            printf("st->state 초기값이 MSG_FLOW_FINISHED\n");
         }
 
         s->server = server;
 
         // NOT
         if (cb != NULL) {
-            printf("cb(call back)이 NULL이 아니다.\n");
             if (SSL_IS_FIRST_HANDSHAKE(s) || !SSL_IS_TLS13(s)) {
-                printf("cb(call back)를 세팅하네.\n");
                 cb(s, SSL_CB_HANDSHAKE_START, 1);
             }
         }
@@ -385,7 +379,6 @@ static int state_machine(SSL *s, int server) {
 
         if (SSL_IS_DTLS(s)) {
             // NOT
-            printf("SSL_IS_DTLS.\n");
             if ((s->version & 0xff00) != (DTLS1_VERSION & 0xff00) &&
                 (server || (s->version & 0xff00) != (DTLS1_BAD_VER & 0xff00))) {
                 SSLfatal(s, SSL_AD_NO_ALERT, ERR_R_INTERNAL_ERROR);
@@ -457,7 +450,6 @@ static int state_machine(SSL *s, int server) {
 
         st->state = MSG_FLOW_WRITING;
         init_write_state_machine(s);
-        printf("st->state : MSG_FLOW_WRITING.\n");
     }
 
     while (st->state != MSG_FLOW_FINISHED) {
@@ -468,13 +460,10 @@ static int state_machine(SSL *s, int server) {
 //            printf("st->state is MSG_FLOW_READING.\n");
             ssret = read_state_machine(s); // 이걸로 SERVER HELLO 읽어서 SERVER HANDSHAKE TRAFFIC SECRET 생성;
             if (ssret == SUB_STATE_FINISHED) {
-                printf("ssret is SUB_STATE_FINISHED.\n");
-                printf("st->state : MSG_FLOW_WRITING.\n");
                 st->state = MSG_FLOW_WRITING;
                 init_write_state_machine(s);
             } else {
                 /* NBIO or error */
-                printf("ssret is not SUB_STATE_FINISHED.\n");
                 goto end;
             }
         } else if (st->state == MSG_FLOW_WRITING) {
@@ -489,13 +478,12 @@ static int state_machine(SSL *s, int server) {
              */
 //                printf("ssret is SUB_STATE_FINISHED.\n");
                 st->state = MSG_FLOW_READING;
-                printf("st->state : MSG_FLOW_READING.\n");
                 init_read_state_machine(s);
             } else if (ssret == SUB_STATE_END_HANDSHAKE) {
                 /*
              * Implement 3
              */
-                printf("ssret is SUB_STATE_END_HANDHSAKE.aa\n");
+                printf("ssret is SUB_STATE_END_HANDHSAKE\n");
                 st->state = MSG_FLOW_FINISHED;
             } else {
                 /* NBIO or error */
