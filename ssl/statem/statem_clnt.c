@@ -1485,10 +1485,10 @@ dtls1_reset_seq_numbers(s, SSL3_CC_WRITE);
                     }
                     // back to the original method
                     s->method = TLS_client_method();
+            }else {
+                if (statem_flush(s) != 1)
+                    return WORK_MORE_B;
             }
-//            if (statem_flush(s) != 1)
-//                return WORK_MORE_B;
-
             if (SSL_IS_TLS13(s)) {
                 if (!tls13_save_handshake_digest_for_pha(s)) {
                     /* SSLfatal() already called */

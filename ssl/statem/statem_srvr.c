@@ -1588,19 +1588,22 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
                 /* TLS 1.3 gets the secret size from the handshake md */
 
                 size_t dummy;
-                if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ)){
-                    return WORK_ERROR;
-                }
-                if (!s->method->ssl3_enc->generate_master_secret(s,
-                                                                 s->master_secret, s->handshake_secret, 0,
-                                                                 &dummy)
-                                                         || !tls13_change_cipher_state(s,
-                                                                                       SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_READ))
-                    return WORK_ERROR;
+                if(s->early_data_state == SSL_DNS_FINISHED_READING) {
+                    if (!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ)) {
+                        return WORK_ERROR;
+                    }
+                    if (!s->method->ssl3_enc->generate_master_secret(s,
+                                                                     s->master_secret, s->handshake_secret, 0,
+                                                                     &dummy)
+                        || !tls13_change_cipher_state(s,
+                                                      SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_READ))
+                        return WORK_ERROR;
 
-                if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_WRITE)){
-                    return WORK_ERROR;
+                    if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_WRITE)){
+                        return WORK_ERROR;
+                    }
                 }
+
                 if (!s->method->ssl3_enc->generate_master_secret(s,
                                                                  s->master_secret, s->handshake_secret, 0,
                                                                  &dummy)
@@ -3215,7 +3218,10 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
 //    }
 
 //    return WORK_FINISHED_STOP;
-    return WORK_FINISHED_CONTINUE;
+    if(s->early_data_state == SSL_DNS_CCS)
+        return WORK_FINISHED_CONTINUE;
+    else
+        return WORK_FINISHED_STOP;
 
     err:
     return WORK_ERROR;

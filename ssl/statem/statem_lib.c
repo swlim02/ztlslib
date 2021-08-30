@@ -928,11 +928,11 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
             return MSG_PROCESS_ERROR;
 
             // server read application data sent by client
-            char buf[100];
-            SSL_read(s, buf, 100);
-            Log("Client->Server DNS application data\n");
-            printf("buf : %s\n", buf);
-            *s=tmp;
+        char buf[100];
+        SSL_read(s, buf, 100);
+        Log("Client->Server DNS application data\n");
+        printf("buf : %s\n", buf);
+        *s=tmp;
     }
     return MSG_PROCESS_FINISHED_READING;
 }
