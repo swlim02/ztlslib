@@ -32,12 +32,13 @@ int tls13_enc(SSL *s, SSL3_RECORD *recs, size_t n_recs, int sending,
     SSL3_RECORD *rec = &recs[0];
     uint32_t alg_enc;
     WPACKET wpkt;
-
+    Log("13enc 1\n");
     if (n_recs != 1) {
         /* Should not happen */
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
         return 0;
     }
+    Log("13enc 2\n");
 
     if (sending) {
         ctx = s->enc_write_ctx;
@@ -48,6 +49,7 @@ int tls13_enc(SSL *s, SSL3_RECORD *recs, size_t n_recs, int sending,
         staticiv = s->read_iv;
         seq = RECORD_LAYER_get_read_sequence(&s->rlayer);
     }
+    Log("13enc 3\n");
 
     /*
      * If we're sending an alert and ctx != NULL then we must be forcing
@@ -60,6 +62,7 @@ int tls13_enc(SSL *s, SSL3_RECORD *recs, size_t n_recs, int sending,
         rec->input = rec->data;
         return 1;
     }
+    Log("13enc 4\n");
 
     ivlen = EVP_CIPHER_CTX_get_iv_length(ctx);
 
@@ -86,6 +89,7 @@ int tls13_enc(SSL *s, SSL3_RECORD *recs, size_t n_recs, int sending,
         }
         alg_enc = s->s3.tmp.new_cipher->algorithm_enc;
     }
+    Log("13enc 5\n");
 
     if (alg_enc & SSL_AESCCM) {
         if (alg_enc & (SSL_AES128CCM8 | SSL_AES256CCM8))
@@ -105,6 +109,7 @@ int tls13_enc(SSL *s, SSL3_RECORD *recs, size_t n_recs, int sending,
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
         return 0;
     }
+    Log("13enc 6\n");
 
     if (!sending) {
         /*
@@ -115,6 +120,7 @@ int tls13_enc(SSL *s, SSL3_RECORD *recs, size_t n_recs, int sending,
             return 0;
         rec->length -= taglen;
     }
+    Log("13enc 7\n");
 
     /* Set up IV */
     if (ivlen < SEQ_NUM_SIZE) {
@@ -126,6 +132,7 @@ int tls13_enc(SSL *s, SSL3_RECORD *recs, size_t n_recs, int sending,
     memcpy(iv, staticiv, offset);
     for (loop = 0; loop < SEQ_NUM_SIZE; loop++)
         iv[offset + loop] = staticiv[offset + loop] ^ seq[loop];
+    Log("13enc 8\n");
 
     /* Increment the sequence counter */
     for (loop = SEQ_NUM_SIZE; loop > 0; loop--) {
@@ -133,6 +140,8 @@ int tls13_enc(SSL *s, SSL3_RECORD *recs, size_t n_recs, int sending,
         if (seq[loop - 1] != 0)
             break;
     }
+    Log("13enc 9\n");
+
     if (loop == 0) {
         /* Sequence has wrapped */
         return 0;
@@ -145,6 +154,7 @@ int tls13_enc(SSL *s, SSL3_RECORD *recs, size_t n_recs, int sending,
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
         return 0;
     }
+    Log("13enc 10\n");
 
     /* Set up the AAD */
     if (!WPACKET_init_static_len(&wpkt, recheader, sizeof(recheader), 0)
@@ -158,6 +168,7 @@ int tls13_enc(SSL *s, SSL3_RECORD *recs, size_t n_recs, int sending,
         WPACKET_cleanup(&wpkt);
         return 0;
     }
+    Log("13enc 11\n");
 
     /*
      * For CCM we must explicitly set the total plaintext length before we add
@@ -173,7 +184,10 @@ int tls13_enc(SSL *s, SSL3_RECORD *recs, size_t n_recs, int sending,
             || EVP_CipherFinal_ex(ctx, rec->data + lenu, &lenf) <= 0
             || (size_t)(lenu + lenf) != rec->length) {
         return 0;
+//        Log("modify\n");
     }
+    Log("13enc 12\n");
+
     if (sending) {
         /* Add the tag */
         if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, taglen,
@@ -183,6 +197,7 @@ int tls13_enc(SSL *s, SSL3_RECORD *recs, size_t n_recs, int sending,
         }
         rec->length += taglen;
     }
+    Log("13enc 13\n");
 
     return 1;
 }

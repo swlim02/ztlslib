@@ -1821,7 +1821,7 @@ int ssl_read_internal(SSL *s, void *buf, size_t num, size_t *readbytes)
         ERR_raise(ERR_LIB_SSL, SSL_R_UNINITIALIZED);
         return -1;
     }
-
+    Log("1\n");
     if (s->shutdown & SSL_RECEIVED_SHUTDOWN) {
         s->rwstate = SSL_NOTHING;
         return 0;
@@ -1837,8 +1837,10 @@ int ssl_read_internal(SSL *s, void *buf, size_t num, size_t *readbytes)
      * better do that
      */
     ossl_statem_check_finish_init(s, 0);
+    Log("2\n");
 
     if ((s->mode & SSL_MODE_ASYNC) && ASYNC_get_current_job() == NULL) {
+        Log("3\n");
         struct ssl_async_args args;
         int ret;
 
@@ -1852,6 +1854,7 @@ int ssl_read_internal(SSL *s, void *buf, size_t num, size_t *readbytes)
         *readbytes = s->asyncrw;
         return ret;
     } else {
+        Log("4\n");
         return s->method->ssl_read(s, buf, num, readbytes);
     }
 }

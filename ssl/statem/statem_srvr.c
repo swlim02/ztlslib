@@ -1588,14 +1588,14 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
                 /* TLS 1.3 gets the secret size from the handshake md */
 
                 size_t dummy;
-                if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_READ)){
+                if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_READ)){
                     return WORK_ERROR;
                 }
                 if (!s->method->ssl3_enc->generate_master_secret(s,
                                                                  s->master_secret, s->handshake_secret, 0,
                                                                  &dummy)
                                                          || !tls13_change_cipher_state(s,
-                                                                                       SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_READ))
+                                                                                       SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_READ))
                     return WORK_ERROR;
 
                 if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_WRITE)){
@@ -1630,17 +1630,17 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
                          0, NULL);
             }
 #endif
-            if (SSL_IS_TLS13(s)) {
-                /* TLS 1.3 gets the secret size from the handshake md */
-                size_t dummy;
-                if (!s->method->ssl3_enc->generate_master_secret(s,
-                                                                 s->master_secret, s->handshake_secret, 0,
-                                                                 &dummy)
-                    || !s->method->ssl3_enc->change_cipher_state(s,
-                                                                 SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_WRITE))
-                    /* SSLfatal() already called */
-                    return WORK_ERROR;
-            }
+//            if (SSL_IS_TLS13(s)) {
+//                /* TLS 1.3 gets the secret size from the handshake md */
+//                size_t dummy;
+//                if (!s->method->ssl3_enc->generate_master_secret(s,
+//                                                                 s->master_secret, s->handshake_secret, 0,
+//                                                                 &dummy)
+//                    || !s->method->ssl3_enc->change_cipher_state(s,
+//                                                                 SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_WRITE))
+//                    /* SSLfatal() already called */
+//                    return WORK_ERROR;
+//            }
             break;
 
         case TLS_ST_SW_CERT_REQ:

@@ -886,14 +886,14 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
     if(s->early_data_state == SSL_DNS_FINISHED_WRITING && !s->server){
         s->early_data_state = SSL_DNS_FINISHED_READING;
         size_t dummy;
-        if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_CLIENT_WRITE)){
+        if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_WRITE)){
             return MSG_PROCESS_ERROR;
         }
         if (!s->method->ssl3_enc->generate_master_secret(s,
                                                          s->master_secret, s->handshake_secret, 0,
                                                          &dummy)
                                                          || !tls13_change_cipher_state(s,
-                                                                                       SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_WRITE))
+                                                                                       SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_WRITE))
             return MSG_PROCESS_ERROR;
         if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_READ)){
             return MSG_PROCESS_ERROR;

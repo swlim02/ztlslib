@@ -196,6 +196,7 @@ int ssl3_get_record(SSL *s)
     if (max_recs == 0)
         max_recs = 1;
     sess = s->session;
+    Log("1\n");
 
     do {
         thisrr = &rr[num_recs];
@@ -483,6 +484,7 @@ int ssl3_get_record(SSL *s)
              && (EVP_CIPHER_get_flags(EVP_CIPHER_CTX_get0_cipher(s->enc_read_ctx))
                  & EVP_CIPH_FLAG_PIPELINE) != 0
              && ssl3_record_app_data_waiting(s));
+    Log("2\n");
 
     if (num_recs == 1
             && thisrr->type == SSL3_RT_CHANGE_CIPHER_SPEC
@@ -513,6 +515,7 @@ int ssl3_get_record(SSL *s)
 
         return 1;
     }
+    Log("3\n");
 
     /*
      * KTLS reads full records. If there is any data left,
@@ -533,6 +536,7 @@ int ssl3_get_record(SSL *s)
             mac_size = (size_t)imac_size;
         }
     }
+    Log("4\n");
 
     /*
      * If in encrypt-then-mac mode calculate mac from encrypted record. All
@@ -573,6 +577,7 @@ int ssl3_get_record(SSL *s)
     }
 
     enc_err = s->method->ssl3_enc->enc(s, rr, num_recs, 0, macbufs, mac_size);
+    Log("5\n");
 
     /*-
      * enc_err is:
@@ -581,7 +586,10 @@ int ssl3_get_record(SSL *s)
      *    1: Success or MTE decryption failed (MAC will be randomised)
      */
     if (enc_err == 0) {
+        Log("enc 1\n");
         if (ossl_statem_in_error(s)) {
+            Log("enc 11\n");
+
             /* SSLfatal() already got called */
             goto end;
         }
@@ -590,6 +598,7 @@ int ssl3_get_record(SSL *s)
              * Valid early_data that we cannot decrypt will fail here. We treat
              * it like an empty record.
              */
+            Log("enc 2\n");
 
             thisrr = &rr[0];
 
@@ -598,6 +607,7 @@ int ssl3_get_record(SSL *s)
                 /* SSLfatal() already called */
                 goto end;
             }
+            Log("enc 3\n");
 
             thisrr->length = 0;
             thisrr->read = 1;
@@ -606,6 +616,7 @@ int ssl3_get_record(SSL *s)
             ret = 1;
             goto end;
         }
+        Log("fatal\n");
         SSLfatal(s, SSL_AD_BAD_RECORD_MAC,
                  SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC);
         goto end;
@@ -614,6 +625,7 @@ int ssl3_get_record(SSL *s)
         BIO_printf(trc_out, "dec %lu\n", (unsigned long)rr[0].length);
         BIO_dump_indent(trc_out, rr[0].data, rr[0].length, 4);
     } OSSL_TRACE_END(TLS);
+    Log("^^\n");
 
     /* r->length is now the compressed data plus mac */
     if ((sess != NULL)
@@ -635,6 +647,8 @@ int ssl3_get_record(SSL *s)
     }
 
     if (enc_err == 0) {
+        Log("enc 4\n");
+
         if (ossl_statem_in_error(s)) {
             /* We already called SSLfatal() */
             goto end;
@@ -650,8 +664,10 @@ int ssl3_get_record(SSL *s)
                  SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC);
         goto end;
     }
+    Log("6\n");
 
  skip_decryption:
+    Log("7\n");
 
     for (j = 0; j < num_recs; j++) {
         thisrr = &rr[j];
@@ -755,10 +771,13 @@ int ssl3_get_record(SSL *s)
             goto end;
         }
     }
+    Log("10\n");
 
     RECORD_LAYER_set_numrpipes(&s->rlayer, num_recs);
     ret = 1;
  end:
+    Log("8\n");
+
     if (macbufs != NULL) {
         for (j = 0; j < num_recs; j++) {
             if (macbufs[j].alloced)
