@@ -2429,10 +2429,12 @@ MSG_PROCESS_RETURN tls_process_server_certificate(SSL *s, PACKET *pkt) {
     size_t chainidx;
     unsigned int context = 0;
 
+    Log("start\n");
     if ((s->session->peer_chain = sk_X509_new_null()) == NULL) {
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
         goto err;
     }
+    Log("1\n");
 
     if ((SSL_IS_TLS13(s) && !PACKET_get_1(pkt, &context))
         || context != 0
@@ -2442,7 +2444,11 @@ MSG_PROCESS_RETURN tls_process_server_certificate(SSL *s, PACKET *pkt) {
         SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
         goto err;
     }
+    Log("2\n");
+
     for (chainidx = 0; PACKET_remaining(pkt); chainidx++) {
+        Log("3\n");
+
         if (!PACKET_get_net_3(pkt, &cert_len)
             || !PACKET_get_bytes(pkt, &certbytes, cert_len)) {
             SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_CERT_LENGTH_MISMATCH);
@@ -2466,8 +2472,11 @@ MSG_PROCESS_RETURN tls_process_server_certificate(SSL *s, PACKET *pkt) {
             SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_CERT_LENGTH_MISMATCH);
             goto err;
         }
+        Log("4\n");
 
         if (SSL_IS_TLS13(s)) {
+            Log("5\n");
+
             RAW_EXTENSION *rawexts = NULL;
             PACKET extensions;
 

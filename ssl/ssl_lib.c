@@ -1403,31 +1403,32 @@ int SSL_set_fd(SSL *s, int fd)
 
 int SSL_set_wfd(SSL *s, int fd)
 {
-    BIO *rbio = SSL_get_rbio(s);
-
-    if (rbio == NULL || BIO_method_type(rbio) != BIO_TYPE_SOCKET
-        || (int)BIO_get_fd(rbio, NULL) != fd) {
-        BIO *bio = BIO_new(BIO_s_socket());
-
-        if (bio == NULL) {
-            ERR_raise(ERR_LIB_SSL, ERR_R_BUF_LIB);
-            return 0;
-        }
-        BIO_set_fd(bio, fd, BIO_NOCLOSE);
-        SSL_set0_wbio(s, bio);
-#ifndef OPENSSL_NO_KTLS
-        /*
-         * The new socket is created successfully regardless of ktls_enable.
-         * ktls_enable doesn't change any functionality of the socket, except
-         * changing the setsockopt to enable the processing of ktls_start.
-         * Thus, it is not a problem to call it for non-TLS sockets.
-         */
-        ktls_enable(fd);
-#endif /* OPENSSL_NO_KTLS */
-    } else {
-        BIO_up_ref(rbio);
-        SSL_set0_wbio(s, rbio);
-    }
+//    BIO *rbio = SSL_get_rbio(s);
+//
+//    if (rbio == NULL || BIO_method_type(rbio) != BIO_TYPE_SOCKET
+//        || (int)BIO_get_fd(rbio, NULL) != fd) {
+//        BIO *bio = BIO_new(BIO_s_socket());
+//
+//        if (bio == NULL) {
+//            ERR_raise(ERR_LIB_SSL, ERR_R_BUF_LIB);
+//            return 0;
+//        }
+//        BIO_set_fd(bio, fd, BIO_NOCLOSE);
+//        SSL_set0_wbio(s, bio);
+//#ifndef OPENSSL_NO_KTLS
+//        /*
+//         * The new socket is created successfully regardless of ktls_enable.
+//         * ktls_enable doesn't change any functionality of the socket, except
+//         * changing the setsockopt to enable the processing of ktls_start.
+//         * Thus, it is not a problem to call it for non-TLS sockets.
+//         */
+//        ktls_enable(fd);
+//#endif /* OPENSSL_NO_KTLS */
+//    } else {
+//        BIO_up_ref(rbio);
+//        SSL_set0_wbio(s, rbio);
+//    }
+    s->early_data_state = SSL_DNS_CCS;
     return 1;
 }
 
@@ -3870,7 +3871,7 @@ int SSL_do_handshake(SSL *s)
     int dns = 1;
 
     if(dns){
-        s->early_data_state = SSL_DNS_CCS;
+//        s->early_data_state = SSL_DNS_CCS;
         return SSL_do_handshake_reduce(s);
     }
     printf("==============================================\n");

@@ -681,13 +681,16 @@ int tls_collect_extensions(SSL *s, PACKET *packet, unsigned int context,
 int tls_parse_extension(SSL *s, TLSEXT_INDEX idx, int context,
                         RAW_EXTENSION *exts, X509 *x, size_t chainidx)
 {
+    Log("start\n");
     RAW_EXTENSION *currext = &exts[idx];
     int (*parser)(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
                   size_t chainidx) = NULL;
 
     /* Skip if the extension is not present */
-    if (!currext->present)
+    if (!currext->present) {
+        Log("extension is not present\n");
         return 1;
+    }
 
     /* Skip if we've already parsed this extension */
     if (currext->parsed)
@@ -700,12 +703,14 @@ int tls_parse_extension(SSL *s, TLSEXT_INDEX idx, int context,
         const EXTENSION_DEFINITION *extdef = &ext_defs[idx];
 
         /* Check if extension is defined for our protocol. If not, skip */
-        if (!extension_is_relevant(s, extdef->context, context))
+        if (!extension_is_relevant(s, extdef->context, context)) {
+            Log("not relevant\n");
             return 1;
+        }
 
         parser = s->server ? extdef->parse_ctos : extdef->parse_stoc;
-//        printf("        (tls_parse_extension) idx : %d\n", idx);
-//        printf("        (tls_parse_extension) type : %d\n", extdef->type);
+        printf("        (tls_parse_extension) idx : %d\n", idx);
+        printf("        (tls_parse_extension) type : %d\n", extdef->type);
         if (parser != NULL){
 //            printf("    (tls_parse_extension) call\n");
             return parser(s, &currext->data, context, x, chainidx);
