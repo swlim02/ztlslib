@@ -80,16 +80,55 @@ int SSL_use_certificate_file(SSL *ssl, const char *file, int type)
         ERR_raise(ERR_LIB_SSL, SSL_R_BAD_SSL_FILETYPE);
         goto end;
     }
-
     if (cert == NULL) {
         ERR_raise(ERR_LIB_SSL, j);
         goto end;
     }
 
-    ret = SSL_use_certificate(ssl, x);
+    if(ssl->early_data_state == SSL_DNS_CCS){
+        STACK_OF(X509)* tmp;
+        ssl->session = SSL_SESSION_new();
+
+        ssl->session->peer_chain = (STACK_OF(X509)*)sk_X509_new_null();
+        if (ssl->session->peer_chain == NULL) {
+            SSLfatal(ssl, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+            goto end;
+        }
+
+        if (x == NULL) {
+            SSLfatal(ssl, SSL_AD_DECODE_ERROR, ERR_R_MALLOC_FAILURE);
+            ERR_raise(ERR_LIB_SSL, ERR_R_MALLOC_FAILURE);
+            goto end;
+        }
+
+        if (!sk_X509_push(ssl->session->peer_chain, x)) {
+            SSLfatal(ssl, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+            goto end;
+        }
+
+
+        if (ssl_verify_cert_chain(ssl, ssl->session->peer_chain) == -1) {
+            Log("not correct cert chain\n");
+        }else
+            Log("correct cert chain\n");
+
+        X509 *peer;
+        EVP_PKEY *pkey = NULL;
+
+        peer = ssl->session->peer;
+        pkey = X509_get0_pubkey(peer);
+        if (pkey == NULL) {
+            SSLfatal(ssl, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+            goto end;
+        }else
+            Log("no\n");
+    }else
+        ret = SSL_use_certificate(ssl, x);
  end:
     X509_free(x);
     BIO_free(in);
+//    sk_X509_pop_free(ssl->session->peer_chain, X509_free);
+//    ssl->session->peer_chain = NULL;
     return ret;
 }
 

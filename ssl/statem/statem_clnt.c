@@ -2590,6 +2590,7 @@ WORK_STATE tls_post_process_server_certificate(SSL *s, WORK_STATE wst) {
     s->session->verify_result = s->verify_result;
 
     /* Save the current hash state for when we receive the CertificateVerify */
+    Log("Save the current hash state for when we receive the CertificateVerify\n");
     if (SSL_IS_TLS13(s)
         && !ssl_handshake_hash(s, s->cert_verify_hash,
                                sizeof(s->cert_verify_hash),

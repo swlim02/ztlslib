@@ -681,14 +681,14 @@ int tls_collect_extensions(SSL *s, PACKET *packet, unsigned int context,
 int tls_parse_extension(SSL *s, TLSEXT_INDEX idx, int context,
                         RAW_EXTENSION *exts, X509 *x, size_t chainidx)
 {
-    Log("start\n");
+//    Log("start\n");
     RAW_EXTENSION *currext = &exts[idx];
     int (*parser)(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
                   size_t chainidx) = NULL;
 
     /* Skip if the extension is not present */
     if (!currext->present) {
-        Log("extension is not present\n");
+//        Log("extension is not present\n");
         return 1;
     }
 
