@@ -1613,6 +1613,7 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
         if(s->early_data_state == SSL_DNS_CCS)
             skey = s->s3.tmp.pkey;
         else{
+            // 나중 수정 필요(원래 server ecdhe 만드는 것처럼 바꾸기)
             FILE *f;
             f = fopen("key.pem", "rb");
             PEM_read_PrivateKey(f, &skey, NULL, NULL);

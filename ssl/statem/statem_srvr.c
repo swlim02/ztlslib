@@ -3144,35 +3144,37 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
         }
     }
 #endif
+    if(s->early_data_state == SSL_DNS_CCS){
+        //    printf("work more finish\n");
+        Log("fix the server's ecdhe keyshare\n");
+        unsigned char *encodedPoint;
+        size_t encoded_pt_len = 0;
+        EVP_PKEY *ckey = s->s3.peer_tmp, *skey = NULL, *skey1 = NULL;
+        FILE *f;
+        f = fopen("key.pem", "rb");
+        PEM_read_PrivateKey(f, &skey, NULL, NULL);
+        fclose(f);
 
-    //    printf("work more finish\n");
-    unsigned char *encodedPoint;
-    size_t encoded_pt_len = 0;
-    EVP_PKEY *ckey = s->s3.peer_tmp, *skey = NULL, *skey1 = NULL;
-    FILE *f;
-    f = fopen("key.pem", "rb");
-    PEM_read_PrivateKey(f, &skey, NULL, NULL);
-    fclose(f);
+        if (skey == NULL) {
+            SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+            goto err;
+        }
 
-    if (skey == NULL) {
-        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
-        goto err;
-    }
+        encoded_pt_len = EVP_PKEY_get1_encoded_public_key(skey, &encodedPoint);
+        if (encoded_pt_len == 0) {
+            SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EC_LIB);
+            EVP_PKEY_free(skey);
+            goto err;
+        }
 
-    encoded_pt_len = EVP_PKEY_get1_encoded_public_key(skey, &encodedPoint);
-    if (encoded_pt_len == 0) {
-        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EC_LIB);
-        EVP_PKEY_free(skey);
-        goto err;
-    }
-
-    /*
-         * This causes the crypto state to be updated based on the derived keys
-         */
-    s->s3.tmp.pkey = skey;
-    if (ssl_derive(s, skey, ckey, 1) == 0) {
-        /* SSLfatal() already called */
-        goto err;
+        /*
+             * This causes the crypto state to be updated based on the derived keys
+             */
+        s->s3.tmp.pkey = skey;
+        if (ssl_derive(s, skey, ckey, 1) == 0) {
+            /* SSLfatal() already called */
+            goto err;
+        }
     }
     if(s->early_data_state == SSL_DNS_CCS){
         // change cipher state) handshake||server_write

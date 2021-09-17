@@ -252,7 +252,7 @@ static int get_cert_verify_tbs_data(SSL *s, unsigned char *tls13tbs,
                    s->cert_verify_hash_len);
             hashlen = s->cert_verify_hash_len;
         } else if(s->early_data_state == SSL_DNS_CCS){
-
+            hashlen = 0;
         }else if (!ssl_handshake_hash(s, tls13tbs + TLS13_TBS_PREAMBLE_SIZE,
                                        EVP_MAX_MD_SIZE, &hashlen)) {
             /* SSLfatal() already called */
@@ -500,8 +500,7 @@ int tls_construct_cert_verify(SSL *s, WPACKET *pkt)
             BUF_reverse(sig, NULL, siglen);
     }
 #endif
-    dumpString(sig, "sig");
-    printf("siglen: %zu\n", siglen);
+
     if (!WPACKET_sub_memcpy_u16(pkt, sig, siglen)) {
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
         goto err;
@@ -524,7 +523,7 @@ int tls_construct_cert_verify(SSL *s, WPACKET *pkt)
 
 MSG_PROCESS_RETURN tls_process_cert_verify(SSL *s, PACKET *pkt)
 {
-    Log("start\n");
+//    Log("start\n");
     EVP_PKEY *pkey = NULL;
     const unsigned char *data;
 #ifndef OPENSSL_NO_GOST
@@ -560,14 +559,14 @@ MSG_PROCESS_RETURN tls_process_cert_verify(SSL *s, PACKET *pkt)
     }
 
     if (SSL_USE_SIGALGS(s)) {
-        Log("scope 1\n");
+//        Log("scope 1\n");
         unsigned int sigalg;
 
         if (!PACKET_get_net_2(pkt, &sigalg)) {
             SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_PACKET);
             goto err;
         }
-        printf("%d\n", sigalg);
+//        printf("%d\n", sigalg);
         if (tls12_check_peer_sigalg(s, sigalg, pkey) <= 0) {
             /* SSLfatal() already called */
             goto err;
@@ -643,7 +642,7 @@ MSG_PROCESS_RETURN tls_process_cert_verify(SSL *s, PACKET *pkt)
 #endif
 
     if (SSL_USE_PSS(s)) {
-        Log("scope 2\n");
+//        Log("scope 2\n");
         if (EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) <= 0
             || EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx,
                                                 RSA_PSS_SALTLEN_DIGEST) <= 0) {
@@ -664,7 +663,7 @@ MSG_PROCESS_RETURN tls_process_cert_verify(SSL *s, PACKET *pkt)
             goto err;
         }
     } else {
-        Log("scope 4\n");
+//        Log("scope 4\n");
 
         j = EVP_DigestVerify(mctx, data, len, hdata, hdatalen);
         if (j <= 0) {
@@ -1477,7 +1476,6 @@ int tls_get_message_body(SSL *s, size_t *len)
     p = s->init_msg;
     n = s->s3.tmp.message_size - s->init_num;
     while (n > 0) {
-        printf("    (tls_get_message_body) ssl_read_bytes\n");
         i = s->method->ssl_read_bytes(s, SSL3_RT_HANDSHAKE, NULL,
                                       &p[s->init_num], n, 0, &readbytes);
         if (i <= 0) {
@@ -1488,7 +1486,7 @@ int tls_get_message_body(SSL *s, size_t *len)
         s->init_num += readbytes;
         n -= readbytes;
     }
-    printf("    (tls_get_message_body) hand_state -> %s\n", SSL_state_string_long(s));
+    printf("    (READ) hand_state -> %s\n", SSL_state_string_long(s));
 
     /*
      * If receiving Finished, record MAC of prior handshake messages for

@@ -1150,13 +1150,13 @@ static int statem_do_write(SSL *s) {
         if (SSL_IS_DTLS(s))
             return dtls1_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
         else {
-            printf("            ssl3_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC)\n");
+//            printf("            ssl3_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC)\n");
             return ssl3_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
         }
 
     } else {
         // ssl3_do_write(s, SSL3_RT_HANDSHAKE);
-        printf("            ssl3_do_write(s, SSL3_RT_HANDSHAKE)\n");
+//        printf("            ssl3_do_write(s, SSL3_RT_HANDSHAKE)\n");
 //        return ssl3_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
         return ssl_do_write(s);
     }
@@ -1311,7 +1311,7 @@ static SUB_STATE_RETURN write_state_machine(SSL *s) {
                 /* Fall through */
 
             case WRITE_STATE_SEND:
-                printf("    (write_state_machine) hand_state -> %s\n", SSL_state_string_long(s));
+                printf("    (WRITE) hand_state -> %s\n", SSL_state_string_long(s));
 //            printf("WRITE_STATE_SEND in write_state_machine func \n");
                 if (SSL_IS_DTLS(s) && st->use_timer) {
                     dtls1_start_timer(s);
@@ -1456,7 +1456,7 @@ static SUB_STATE_RETURN write_state_machine_reduce(SSL *s) {
                 /* Fall through */
 
             case WRITE_STATE_SEND:
-                printf("    (write_state_machine) hand_state -> %s\n", SSL_state_string_long(s));
+                printf("    (WRITE) hand_state -> %s\n", SSL_state_string_long(s));
                 //            printf("WRITE_STATE_SEND in write_state_machine func \n");
                 if (SSL_IS_DTLS(s) && st->use_timer) {
                     dtls1_start_timer(s);
