@@ -86,6 +86,7 @@ int SSL_use_certificate_file(SSL *ssl, const char *file, int type)
     }
 
     if(ssl->early_data_state == SSL_DNS_CCS){
+        Log("store the Server's Certificate\n");
         STACK_OF(X509)* tmp;
         ssl->session = SSL_SESSION_new();
 
@@ -107,21 +108,11 @@ int SSL_use_certificate_file(SSL *ssl, const char *file, int type)
         }
 
 
-        if (ssl_verify_cert_chain(ssl, ssl->session->peer_chain) == -1) {
+        if (!ssl_verify_cert_chain(ssl, ssl->session->peer_chain) == -1) {
             Log("not correct cert chain\n");
-        }else
-            Log("correct cert chain\n");
+        }
 
-        X509 *peer;
-        EVP_PKEY *pkey = NULL;
 
-        peer = ssl->session->peer;
-        pkey = X509_get0_pubkey(peer);
-        if (pkey == NULL) {
-            SSLfatal(ssl, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
-            goto end;
-        }else
-            Log("no\n");
     }else
         ret = SSL_use_certificate(ssl, x);
  end:

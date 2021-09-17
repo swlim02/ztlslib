@@ -225,14 +225,15 @@ static int get_cert_verify_tbs_data(SSL *s, unsigned char *tls13tbs,
     static const char servercontext[] = "TLS 1.3, server CertificateVerify";
     static const char clientcontext[] = "TLS 1.3, client CertificateVerify";
 #endif
-    if (SSL_IS_TLS13(s)) {
+    if (SSL_IS_TLS13(s) || s->early_data_state == SSL_DNS_CCS) {
         size_t hashlen;
 
         /* Set the first 64 bytes of to-be-signed data to octet 32 */
         memset(tls13tbs, 32, TLS13_TBS_START_SIZE);
         /* This copies the 33 bytes of context plus the 0 separator byte */
         if (s->statem.hand_state == TLS_ST_CR_CERT_VRFY
-                 || s->statem.hand_state == TLS_ST_SW_CERT_VRFY)
+                 || s->statem.hand_state == TLS_ST_SW_CERT_VRFY
+                 || s->early_data_state == SSL_DNS_CCS)
             strcpy((char *)tls13tbs + TLS13_TBS_START_SIZE, servercontext);
         else
             strcpy((char *)tls13tbs + TLS13_TBS_START_SIZE, clientcontext);
@@ -242,14 +243,20 @@ static int get_cert_verify_tbs_data(SSL *s, unsigned char *tls13tbs,
          * hash value. We can't use the current handshake hash state because
          * that includes the CertVerify itself.
          */
+
+
+
         if (s->statem.hand_state == TLS_ST_CR_CERT_VRFY
                 || s->statem.hand_state == TLS_ST_SR_CERT_VRFY) {
             memcpy(tls13tbs + TLS13_TBS_PREAMBLE_SIZE, s->cert_verify_hash,
                    s->cert_verify_hash_len);
             hashlen = s->cert_verify_hash_len;
-        } else if (!ssl_handshake_hash(s, tls13tbs + TLS13_TBS_PREAMBLE_SIZE,
+        } else if(s->early_data_state == SSL_DNS_CCS){
+
+        }else if (!ssl_handshake_hash(s, tls13tbs + TLS13_TBS_PREAMBLE_SIZE,
                                        EVP_MAX_MD_SIZE, &hashlen)) {
             /* SSLfatal() already called */
+            Log("error\n");
             return 0;
         }
 
@@ -268,6 +275,126 @@ static int get_cert_verify_tbs_data(SSL *s, unsigned char *tls13tbs,
     }
 
     return 1;
+}
+int early_process_cert_verify(SSL *s, unsigned char * out){
+    Log("process the Server's Certificate Verify\n");
+    X509 *x;
+    x = sk_X509_value(s->session->peer_chain, 0);
+
+    EVP_PKEY* pkey = X509_get0_pubkey(x);
+    const SSL_CERT_LOOKUP *clu;
+    size_t certidx;
+
+    if (pkey == NULL || EVP_PKEY_missing_parameters(pkey)) {
+        SSLfatal(s, SSL_AD_INTERNAL_ERROR,
+                 SSL_R_UNABLE_TO_FIND_PUBLIC_KEY_PARAMETERS);
+        Log("error\n");
+    }
+
+    if ((clu = ssl_cert_lookup_by_pkey(pkey, &certidx)) == NULL) {
+        SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+        Log("error\n");
+    }
+    /*
+     * Check certificate type is consistent with ciphersuite. For TLS 1.3
+     * skip check since TLS 1.3 ciphersuites can be used with any certificate
+     * type.
+     */
+
+    X509_free(s->session->peer);
+    X509_up_ref(x);
+    s->session->peer = x;
+    s->session->verify_result = s->verify_result;
+
+    X509 *peer;
+    pkey = NULL;
+
+    peer = s->session->peer;
+    pkey = X509_get0_pubkey(peer);
+    if (pkey == NULL) {
+        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+        Log("error\n");
+    }
+
+
+    // generate cert verify
+    EVP_PKEY *pvkey = NULL;
+    const EVP_MD *md = NULL;
+    EVP_MD_CTX *mctx = NULL;
+    EVP_PKEY_CTX *pctx = NULL;
+    size_t hdatalen = 0, siglen = 0;
+    void *hdata;
+    unsigned char *sig = NULL;
+    unsigned char tls13tbs[64+33+1 + EVP_MAX_MD_SIZE];
+    const SIGALG_LOOKUP *lu = s->s3.tmp.sigalg;
+    unsigned int sigalg;
+    sigalg = 2052;
+
+    pvkey = s->s3.tmp.cert->privatekey;
+
+    mctx = EVP_MD_CTX_new();
+
+    if (mctx == NULL) {
+        Log("error\n");
+        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+    }
+    /* Get the data to be signed */
+    if (!get_cert_verify_tbs_data(s, tls13tbs, &hdata, &hdatalen)) {
+        /* SSLfatal() already called */
+        Log("can not load cert verify\n");
+    }
+
+
+    if (EVP_DigestSignInit_ex(mctx, &pctx,
+                              md == NULL ? NULL : EVP_MD_get0_name(md),
+                              s->ctx->libctx, s->ctx->propq, pkey,
+                              NULL) <= 0) {
+        Log("digest\n");
+        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
+    }
+
+
+    /*
+     * Here we *must* use EVP_DigestSign() because Ed25519/Ed448 does not
+     * support streaming via EVP_DigestSignUpdate/EVP_DigestSignFinal
+     */
+    if (EVP_DigestSign(mctx, NULL, &siglen, hdata, hdatalen) <= 0) {
+        Log("can not digest the sign\n");
+        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
+    }
+    sig = OPENSSL_malloc(siglen);
+
+//    if (sig == NULL
+//    || EVP_DigestSign(mctx, sig, &siglen, hdata, hdatalen) <= 0) {
+//        Log("second sign\n");
+//        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
+//    }
+//    dumpString(sig, "sig");
+//    printf("siglen: %zu\n", siglen);
+    /* Digest cached records and discard handshake buffer */
+//    if (!ssl3_digest_cached_records(s, 0)) {
+//        /* SSLfatal() already called */
+//        Log("eerror\n");
+//    }
+
+//    OPENSSL_free(sig);
+//    EVP_MD_CTX_free(mctx);
+//    return 1;
+
+
+
+    // process cert verify
+    if (SSL_USE_SIGALGS(s)) {
+
+        if (tls12_check_peer_sigalg(s, sigalg, pkey) <= 0) {
+            /* SSLfatal() already called */
+            Log("error\n");
+        }
+    }
+
+    EVP_DigestVerify(mctx, sig, siglen, hdata, hdatalen);
+
+    return 0;
 }
 
 int tls_construct_cert_verify(SSL *s, WPACKET *pkt)
@@ -373,7 +500,8 @@ int tls_construct_cert_verify(SSL *s, WPACKET *pkt)
             BUF_reverse(sig, NULL, siglen);
     }
 #endif
-
+    dumpString(sig, "sig");
+    printf("siglen: %zu\n", siglen);
     if (!WPACKET_sub_memcpy_u16(pkt, sig, siglen)) {
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
         goto err;
@@ -396,6 +524,7 @@ int tls_construct_cert_verify(SSL *s, WPACKET *pkt)
 
 MSG_PROCESS_RETURN tls_process_cert_verify(SSL *s, PACKET *pkt)
 {
+    Log("start\n");
     EVP_PKEY *pkey = NULL;
     const unsigned char *data;
 #ifndef OPENSSL_NO_GOST
@@ -431,12 +560,14 @@ MSG_PROCESS_RETURN tls_process_cert_verify(SSL *s, PACKET *pkt)
     }
 
     if (SSL_USE_SIGALGS(s)) {
+        Log("scope 1\n");
         unsigned int sigalg;
 
         if (!PACKET_get_net_2(pkt, &sigalg)) {
             SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_PACKET);
             goto err;
         }
+        printf("%d\n", sigalg);
         if (tls12_check_peer_sigalg(s, sigalg, pkey) <= 0) {
             /* SSLfatal() already called */
             goto err;
@@ -512,6 +643,7 @@ MSG_PROCESS_RETURN tls_process_cert_verify(SSL *s, PACKET *pkt)
 #endif
 
     if (SSL_USE_PSS(s)) {
+        Log("scope 2\n");
         if (EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) <= 0
             || EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx,
                                                 RSA_PSS_SALTLEN_DIGEST) <= 0) {
@@ -532,6 +664,8 @@ MSG_PROCESS_RETURN tls_process_cert_verify(SSL *s, PACKET *pkt)
             goto err;
         }
     } else {
+        Log("scope 4\n");
+
         j = EVP_DigestVerify(mctx, data, len, hdata, hdatalen);
         if (j <= 0) {
             SSLfatal(s, SSL_AD_DECRYPT_ERROR, SSL_R_BAD_SIGNATURE);

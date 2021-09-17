@@ -21,6 +21,7 @@
 #include <openssl/async.h>
 #include <openssl/ct.h>
 #include <openssl/trace.h>
+#include <ssl/statem/statem_local.h>
 #include "internal/cryptlib.h"
 #include "internal/refcount.h"
 #include "internal/ktls.h"
@@ -3100,13 +3101,22 @@ int SSL_export_keying_material(SSL *s, unsigned char *out, size_t olen,
                                const unsigned char *context, size_t contextlen,
                                int use_context)
 {
-    if (s->session == NULL
-        || (s->version < TLS1_VERSION && s->version != DTLS1_BAD_VER))
-        return -1;
+    if(s->early_data_state == SSL_DNS_CCS){
+        // load session->peer
+        early_process_cert_verify(s, NULL);
 
-    return s->method->ssl3_enc->export_keying_material(s, out, olen, label,
-                                                       llen, context,
-                                                       contextlen, use_context);
+    }else{
+
+        if (s->session == NULL
+        || (s->version < TLS1_VERSION && s->version != DTLS1_BAD_VER))
+            return -1;
+
+        return s->method->ssl3_enc->export_keying_material(s, out, olen, label,
+                                                           llen, context,
+                                                           contextlen, use_context);
+
+    }
+    return 1;
 }
 
 int SSL_export_keying_material_early(SSL *s, unsigned char *out, size_t olen,
@@ -4807,18 +4817,21 @@ int ssl_handshake_hash(SSL *s, unsigned char *out, size_t outlen,
     int ret = 0;
 
     if (hashleni < 0 || (size_t)hashleni > outlen) {
+        Log("err\n");
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
         goto err;
     }
 
     ctx = EVP_MD_CTX_new();
     if (ctx == NULL) {
+        Log("err\n");
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
         goto err;
     }
 
     if (!EVP_MD_CTX_copy_ex(ctx, hdgst)
         || EVP_DigestFinal_ex(ctx, out, NULL) <= 0) {
+        Log("err\n");
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
         goto err;
     }
@@ -5534,10 +5547,10 @@ static int nss_keylog_int(const char *prefix,
 
     ssl->ctx->keylog_callback(ssl, (const char *)out);
     OPENSSL_clear_free(out, out_len);
-    dumpString(ssl->handshake_traffic_hash, "hth");
-    dumpString(ssl->handshake_secret, "hs");
-    dumpString(ssl->master_secret, "ms");
-    printf("==============================================\n");
+//    dumpString(ssl->handshake_traffic_hash, "hth");
+//    dumpString(ssl->handshake_secret, "hs");
+//    dumpString(ssl->master_secret, "ms");
+//    printf("==============================================\n");
     return 1;
 
 }

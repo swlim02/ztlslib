@@ -704,13 +704,13 @@ int tls_parse_extension(SSL *s, TLSEXT_INDEX idx, int context,
 
         /* Check if extension is defined for our protocol. If not, skip */
         if (!extension_is_relevant(s, extdef->context, context)) {
-            Log("not relevant\n");
+//            Log("not relevant\n");
             return 1;
         }
 
         parser = s->server ? extdef->parse_ctos : extdef->parse_stoc;
-        printf("        (tls_parse_extension) idx : %d\n", idx);
-        printf("        (tls_parse_extension) type : %d\n", extdef->type);
+//        printf("        (tls_parse_extension) idx : %d\n", idx);
+//        printf("        (tls_parse_extension) type : %d\n", extdef->type);
         if (parser != NULL){
 //            printf("    (tls_parse_extension) call\n");
             return parser(s, &currext->data, context, x, chainidx);
