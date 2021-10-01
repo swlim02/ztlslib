@@ -1388,12 +1388,13 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
 
                 // assign client's ecdhe private key and server public key
                 Log("assign client's ecdhe private key and server public key\n");
-                EVP_PKEY *ckey = s->s3.tmp.pkey, *skey = NULL;
-                FILE *f;
-                f = fopen("pubKey.pem", "rb");
-                PEM_read_PUBKEY(f, &skey, NULL, NULL);
-                fclose(f);
-
+                EVP_PKEY *ckey = s->s3.tmp.pkey, *skey = s->s3.peer_tmp;
+//                FILE *f;
+//                f = fopen("pubKey.pem", "rb");
+//                PEM_read_PUBKEY(f, &skey, NULL, NULL);
+//                fclose(f);
+// set server's ecdhe public key
+//s->s3.peer_tmp = skey;
                 // derive handshake secret
                 if (ssl_derive(s, ckey, skey, 1) == 0) {
                     /* SSLfatal() already called */
@@ -1401,8 +1402,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                     return 0;
                 }
                 s->method = TLS_client_method();
-                // set server's ecdhe public key
-                s->s3.peer_tmp = skey;
+
             }
             break;
         case TLS_ST_CW_END_OF_EARLY_DATA:

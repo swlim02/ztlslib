@@ -549,8 +549,10 @@ static int state_machine_reduce(SSL *s, int server) {
          * If we are stateless then we already called SSL_clear() - don't do
          * it again and clear the STATELESS flag itself.
          */
+
         if ((s->s3.flags & TLS1_FLAGS_STATELESS) == 0 && !SSL_clear(s))
             return -1;
+
     }
 #ifndef OPENSSL_NO_SCTP
     if (SSL_IS_DTLS(s) && BIO_dgram_is_sctp(SSL_get_wbio(s))) {

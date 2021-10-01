@@ -276,9 +276,123 @@ static int get_cert_verify_tbs_data(SSL *s, unsigned char *tls13tbs,
 
     return 1;
 }
-int early_process_cert_verify(SSL *s, unsigned char * out){
+
+// TODOTODOTODO
+RSA* createPrivateRSA(char* key) {
+    RSA *rsa = NULL;
+    BIO * keybio = BIO_new_mem_buf((void*)key, -1);
+    if (keybio==NULL) {
+        return 0;
+    }
+    rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa,NULL, NULL);
+    return rsa;
+}
+
+RSA* createPublicRSA(char* key) {
+    RSA *rsa = NULL;
+    BIO *keybio;
+    keybio = BIO_new_mem_buf((void*)key, -1);
+    if (keybio==NULL) {
+        return 0;
+    }
+    rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa,NULL, NULL);
+    return rsa;
+}
+
+int RSAVerifySignature( RSA* rsa,
+                        unsigned char* MsgHash,
+                        size_t MsgHashLen,
+                        const char* Msg,
+                        size_t MsgLen,
+                        int* Authentic) {
+    *Authentic = 0;
+    EVP_PKEY* pubKey  = EVP_PKEY_new();
+    EVP_PKEY_assign_RSA(pubKey, rsa);
+    EVP_MD_CTX* m_RSAVerifyCtx = EVP_MD_CTX_create();
+
+    if (EVP_DigestVerifyInit(m_RSAVerifyCtx,NULL, EVP_sha256(),NULL,pubKey)<=0) {
+        return 0;
+    }
+    if (EVP_DigestVerifyUpdate(m_RSAVerifyCtx, Msg, MsgLen) <= 0) {
+        return 0;
+    }
+    int AuthStatus = EVP_DigestVerifyFinal(m_RSAVerifyCtx, MsgHash, MsgHashLen);
+    if (AuthStatus==1) {
+        *Authentic = 1;
+        //        EVP_MD_CTX_cleanup(m_RSAVerifyCtx);
+        return 1;
+    } else if(AuthStatus==0){
+        *Authentic = 0;
+        //        EVP_MD_CTX_cleanup(m_RSAVerifyCtx);
+        return 1;
+    } else{
+        *Authentic = 0;
+        //        EVP_MD_CTX_cleanup(m_RSAVerifyCtx);
+        return 1;
+    }
+}
+
+void Base64Encode( const unsigned char* buffer,
+                   size_t length,
+                   char** base64Text) {
+    BIO *bio, *b64;
+    BUF_MEM *bufferPtr;
+
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_new(BIO_s_mem());
+    bio = BIO_push(b64, bio);
+
+    BIO_write(bio, buffer, length);
+    BIO_flush(bio);
+    BIO_get_mem_ptr(bio, &bufferPtr);
+    BIO_set_close(bio, BIO_NOCLOSE);
+    BIO_free_all(bio);
+
+    *base64Text=(*bufferPtr).data;
+}
+
+size_t calcDecodeLength(const char* b64input) {
+    size_t len = strlen(b64input), padding = 0;
+
+    if (b64input[len-1] == '=' && b64input[len-2] == '=') //last two chars are =
+        padding = 2;
+    else if (b64input[len-1] == '=') //last char is =
+        padding = 1;
+    return (len*3)/4 - padding;
+}
+
+void Base64Decode(const char* b64message, unsigned char** buffer, size_t* length) {
+    BIO *bio, *b64;
+
+    int decodeLen = calcDecodeLength(b64message);
+    *buffer = (unsigned char*)malloc(decodeLen + 1);
+    (*buffer)[decodeLen] = '\0';
+
+    bio = BIO_new_mem_buf(b64message, -1);
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_push(b64, bio);
+
+    *length = BIO_read(bio, *buffer, strlen(b64message));
+    BIO_free_all(bio);
+}
+
+
+int verifySignature(char* publicKey, char* plainText, char* signatureBase64) {
+    RSA* publicRSA = createPublicRSA(publicKey);
+    unsigned char* encMessage;
+    size_t encMessageLength;
+    int authentic;
+    Base64Decode(signatureBase64, &encMessage, &encMessageLength);
+    int result = RSAVerifySignature(publicRSA, encMessage, encMessageLength, plainText, strlen(plainText), &authentic);
+    return result & authentic;
+}
+
+int early_process_cert_verify(SSL *s, unsigned char *out,
+                              const unsigned char *context, size_t contextlen){
     Log("process the Server's Certificate Verify\n");
     X509 *x;
+    BIO* outbio;
+    unsigned char pubKey[contextlen];
     x = sk_X509_value(s->session->peer_chain, 0);
 
     EVP_PKEY* pkey = X509_get0_pubkey(x);
@@ -300,7 +414,6 @@ int early_process_cert_verify(SSL *s, unsigned char * out){
      * skip check since TLS 1.3 ciphersuites can be used with any certificate
      * type.
      */
-
     X509_free(s->session->peer);
     X509_up_ref(x);
     s->session->peer = x;
@@ -316,83 +429,17 @@ int early_process_cert_verify(SSL *s, unsigned char * out){
         Log("error\n");
     }
 
+    outbio  = BIO_new(BIO_s_mem());
+    PEM_write_bio_PUBKEY( outbio, pkey );
+    BIO_read( outbio, pubKey , contextlen );
 
-    // generate cert verify
-    EVP_PKEY *pvkey = NULL;
-    const EVP_MD *md = NULL;
-    EVP_MD_CTX *mctx = NULL;
-    EVP_PKEY_CTX *pctx = NULL;
-    size_t hdatalen = 0, siglen = 0;
-    void *hdata;
-    unsigned char *sig = NULL;
-    unsigned char tls13tbs[64+33+1 + EVP_MAX_MD_SIZE];
-    const SIGALG_LOOKUP *lu = s->s3.tmp.sigalg;
-    unsigned int sigalg;
-    sigalg = 2052;
+    int authentic = verifySignature((char*)pubKey, (char*)out, (char*)context);
 
-    pvkey = s->s3.tmp.cert->privatekey;
-
-    mctx = EVP_MD_CTX_new();
-
-    if (mctx == NULL) {
-        Log("error\n");
-        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+    if ( authentic ) {
+        Log("Authentic\n");
+    } else {
+        Log("Not Authentic\n");
     }
-    /* Get the data to be signed */
-    if (!get_cert_verify_tbs_data(s, tls13tbs, &hdata, &hdatalen)) {
-        /* SSLfatal() already called */
-        Log("can not load cert verify\n");
-    }
-
-
-    if (EVP_DigestSignInit_ex(mctx, &pctx,
-                              md == NULL ? NULL : EVP_MD_get0_name(md),
-                              s->ctx->libctx, s->ctx->propq, pkey,
-                              NULL) <= 0) {
-        Log("digest\n");
-        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
-    }
-
-
-    /*
-     * Here we *must* use EVP_DigestSign() because Ed25519/Ed448 does not
-     * support streaming via EVP_DigestSignUpdate/EVP_DigestSignFinal
-     */
-    if (EVP_DigestSign(mctx, NULL, &siglen, hdata, hdatalen) <= 0) {
-        Log("can not digest the sign\n");
-        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
-    }
-    sig = OPENSSL_malloc(siglen);
-
-//    if (sig == NULL
-//    || EVP_DigestSign(mctx, sig, &siglen, hdata, hdatalen) <= 0) {
-//        Log("second sign\n");
-//        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_EVP_LIB);
-//    }
-//    dumpString(sig, "sig");
-//    printf("siglen: %zu\n", siglen);
-    /* Digest cached records and discard handshake buffer */
-//    if (!ssl3_digest_cached_records(s, 0)) {
-//        /* SSLfatal() already called */
-//        Log("eerror\n");
-//    }
-
-//    OPENSSL_free(sig);
-//    EVP_MD_CTX_free(mctx);
-//    return 1;
-
-
-
-    // process cert verify
-    if (SSL_USE_SIGALGS(s)) {
-
-        if (tls12_check_peer_sigalg(s, sigalg, pkey) <= 0) {
-            /* SSLfatal() already called */
-            Log("error\n");
-        }
-    }
-
-    EVP_DigestVerify(mctx, sig, siglen, hdata, hdatalen);
 
     return 0;
 }

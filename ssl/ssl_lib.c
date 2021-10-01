@@ -3103,8 +3103,7 @@ int SSL_export_keying_material(SSL *s, unsigned char *out, size_t olen,
 {
     if(s->early_data_state == SSL_DNS_CCS){
         // load session->peer
-        early_process_cert_verify(s, NULL);
-
+        early_process_cert_verify(s, out, context, contextlen);
     }else{
 
         if (s->session == NULL

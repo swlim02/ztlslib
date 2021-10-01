@@ -3382,7 +3382,8 @@ int ssl3_clear(SSL *s)
     OPENSSL_free(s->s3.tmp.peer_cert_sigalgs);
 
     EVP_PKEY_free(s->s3.tmp.pkey);
-    EVP_PKEY_free(s->s3.peer_tmp);
+    if(s->early_data_state != SSL_DNS_CCS)
+        EVP_PKEY_free(s->s3.peer_tmp);
 
     ssl3_free_digest_list(s);
 
@@ -3390,7 +3391,8 @@ int ssl3_clear(SSL *s)
     OPENSSL_free(s->s3.alpn_proposed);
 
     /* NULL/zero-out everything in the s3 struct */
-    memset(&s->s3, 0, sizeof(s->s3));
+    if(s->early_data_state != SSL_DNS_CCS)
+        memset(&s->s3, 0, sizeof(s->s3));
 
     if (!ssl_free_wbio_buffer(s))
         return 0;

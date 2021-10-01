@@ -38,7 +38,31 @@ int SSL_use_certificate(SSL *ssl, X509 *x)
         ERR_raise(ERR_LIB_SSL, rv);
         return 0;
     }
+    if(ssl->early_data_state == SSL_DNS_CCS){
+        Log("store the Server's Certificate\n");
+        STACK_OF(X509)* tmp;
+        ssl->session = SSL_SESSION_new();
 
+        ssl->session->peer_chain = (STACK_OF(X509)*)sk_X509_new_null();
+        if (ssl->session->peer_chain == NULL) {
+            SSLfatal(ssl, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+
+        }
+
+        if (x == NULL) {
+            SSLfatal(ssl, SSL_AD_DECODE_ERROR, ERR_R_MALLOC_FAILURE);
+            ERR_raise(ERR_LIB_SSL, ERR_R_MALLOC_FAILURE);
+        }
+
+        if (!sk_X509_push(ssl->session->peer_chain, x)) {
+            SSLfatal(ssl, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
+        }
+
+
+        if (!ssl_verify_cert_chain(ssl, ssl->session->peer_chain) == -1) {
+            Log("not correct cert chain\n");
+        }
+    }
     return ssl_set_cert(ssl->cert, x);
 }
 
@@ -85,36 +109,8 @@ int SSL_use_certificate_file(SSL *ssl, const char *file, int type)
         goto end;
     }
 
-    if(ssl->early_data_state == SSL_DNS_CCS){
-        Log("store the Server's Certificate\n");
-        STACK_OF(X509)* tmp;
-        ssl->session = SSL_SESSION_new();
 
-        ssl->session->peer_chain = (STACK_OF(X509)*)sk_X509_new_null();
-        if (ssl->session->peer_chain == NULL) {
-            SSLfatal(ssl, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
-            goto end;
-        }
-
-        if (x == NULL) {
-            SSLfatal(ssl, SSL_AD_DECODE_ERROR, ERR_R_MALLOC_FAILURE);
-            ERR_raise(ERR_LIB_SSL, ERR_R_MALLOC_FAILURE);
-            goto end;
-        }
-
-        if (!sk_X509_push(ssl->session->peer_chain, x)) {
-            SSLfatal(ssl, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
-            goto end;
-        }
-
-
-        if (!ssl_verify_cert_chain(ssl, ssl->session->peer_chain) == -1) {
-            Log("not correct cert chain\n");
-        }
-
-
-    }else
-        ret = SSL_use_certificate(ssl, x);
+    ret = SSL_use_certificate(ssl, x);
  end:
     X509_free(x);
     BIO_free(in);
@@ -173,7 +169,12 @@ int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey)
         ERR_raise(ERR_LIB_SSL, ERR_R_PASSED_NULL_PARAMETER);
         return 0;
     }
-    ret = ssl_set_pkey(ssl->cert, pkey);
+
+    if(!ssl->server){
+        ssl->s3.peer_tmp = pkey;
+        return 1;
+    }else
+        ret = ssl_set_pkey(ssl->cert, pkey);
     return ret;
 }
 
