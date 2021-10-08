@@ -59,7 +59,7 @@ int SSL_use_certificate(SSL *ssl, X509 *x)
         }
 
 
-        if (!ssl_verify_cert_chain(ssl, ssl->session->peer_chain) == -1) {
+        if (ssl_verify_cert_chain(ssl, ssl->session->peer_chain) <= 0) {
             Log("not correct cert chain\n");
         }
     }
