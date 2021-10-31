@@ -277,16 +277,7 @@ static int get_cert_verify_tbs_data(SSL *s, unsigned char *tls13tbs,
     return 1;
 }
 
-// TODOTODOTODO
-RSA* createPrivateRSA(char* key) {
-    RSA *rsa = NULL;
-    BIO * keybio = BIO_new_mem_buf((void*)key, -1);
-    if (keybio==NULL) {
-        return 0;
-    }
-    rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa,NULL, NULL);
-    return rsa;
-}
+// Verify part
 
 RSA* createPublicRSA(char* key) {
     RSA *rsa = NULL;
@@ -330,25 +321,6 @@ int RSAVerifySignature( RSA* rsa,
         //        EVP_MD_CTX_cleanup(m_RSAVerifyCtx);
         return 1;
     }
-}
-
-void Base64Encode( const unsigned char* buffer,
-                   size_t length,
-                   char** base64Text) {
-    BIO *bio, *b64;
-    BUF_MEM *bufferPtr;
-
-    b64 = BIO_new(BIO_f_base64());
-    bio = BIO_new(BIO_s_mem());
-    bio = BIO_push(b64, bio);
-
-    BIO_write(bio, buffer, length);
-    BIO_flush(bio);
-    BIO_get_mem_ptr(bio, &bufferPtr);
-    BIO_set_close(bio, BIO_NOCLOSE);
-    BIO_free_all(bio);
-
-    *base64Text=(*bufferPtr).data;
 }
 
 size_t calcDecodeLength(const char* b64input) {
