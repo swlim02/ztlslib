@@ -1002,6 +1002,16 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
     }
 
     while (1) {
+//        printf("%d\n", s->s3.npn_seen);
+//
+//        printf("%zu\n", s->s3.tmp.message_size);
+//        printf("%d\n", s->s3.num_renegotiations);
+//        printf("%d\n", s->s3.renegotiate);
+//        printf("%d\n", s->s3.total_renegotiations);
+//        printf("%d\n", s->s3.in_read_app_data);
+
+
+
         switch (st->read_state) {
             case READ_STATE_HEADER:
                 //            printf("READ_STATE_HEADER in read_state_machine func\n");
@@ -1034,8 +1044,6 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                  */
                 if (!transition(s, mt))
                     return SUB_STATE_ERROR;
-//                printf("tmp size : %zu\n", s->s3.tmp.message_size);
-//                printf("max size : %zu\n", max_message_size(s));
                 if (s->s3.tmp.message_size > max_message_size(s)) {
                     SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER,
                              SSL_R_EXCESSIVE_MESSAGE_SIZE);

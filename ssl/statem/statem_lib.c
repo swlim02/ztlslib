@@ -1371,8 +1371,6 @@ int tls_get_message_header(SSL *s, int *mt)
 
 
     p = (unsigned char *)s->init_buf->data;
-//    printf("length : %zu\n", s->init_buf->length);
-//    printf("p: %d\n", p[0]);
 
     do {
         while (s->init_num < SSL3_HM_HEADER_LENGTH) {

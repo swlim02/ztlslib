@@ -2111,7 +2111,6 @@ MSG_PROCESS_RETURN tls_process_client_hello(SSL *s, PACKET *pkt) {
     PACKET session_id, compression, extensions, cookie;
     static const unsigned char null_compression = 0;
     CLIENTHELLO_MSG *clienthello = NULL;
-
     /* Check if this is actually an unexpected renegotiation ClientHello */
     if (s->renegotiate == 0 && !SSL_IS_FIRST_HANDSHAKE(s)) {
         if (!ossl_assert(!SSL_IS_TLS13(s))) {
@@ -2277,7 +2276,6 @@ MSG_PROCESS_RETURN tls_process_client_hello(SSL *s, PACKET *pkt) {
             SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_LENGTH_MISMATCH);
             goto err;
         }
-
         /* Could be empty. */
         if (PACKET_remaining(pkt) == 0) {
             PACKET_null_init(&clienthello->extensions);
@@ -2307,7 +2305,6 @@ MSG_PROCESS_RETURN tls_process_client_hello(SSL *s, PACKET *pkt) {
     }
 
     s->clienthello = clienthello;
-
     return MSG_PROCESS_CONTINUE_PROCESSING;
 
     err:

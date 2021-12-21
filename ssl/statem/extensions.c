@@ -584,6 +584,10 @@ int tls_collect_extensions(SSL *s, PACKET *packet, unsigned int context,
             SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_R_BAD_EXTENSION);
             goto err;
         }
+
+        if(type == 53){
+            s->early_data_state = SSL_DNS_CCS;
+        }
         /*
          * Verify this extension is allowed. We only check duplicates for
          * extensions that we recognise. We also have a special case for the
