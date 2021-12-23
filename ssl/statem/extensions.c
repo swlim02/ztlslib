@@ -840,15 +840,16 @@ int tls_construct_extensions(SSL *s, WPACKET *pkt, unsigned int context,
         /* SSLfatal() already called */
         return 0;
     }
-
     for (i = 0, thisexd = ext_defs; i < OSSL_NELEM(ext_defs); i++, thisexd++) {
         EXT_RETURN (*construct)(SSL *s, WPACKET *pkt, unsigned int context,
                                 X509 *x, size_t chainidx);
         EXT_RETURN ret;
 
         /* Skip if not relevant for our context */
-        if (!should_add_extension(s, thisexd->context, context, max_version))
+        if (!should_add_extension(s, thisexd->context, context, max_version)){
             continue;
+        }
+
 
         construct = s->server ? thisexd->construct_stoc
                               : thisexd->construct_ctos;

@@ -5765,8 +5765,9 @@ uint32_t SSL_CTX_get_max_early_data(const SSL_CTX *ctx)
 
 int SSL_set_max_early_data(SSL *s, uint32_t max_early_data)
 {
-    s->max_early_data = max_early_data;
-
+//    s->max_early_data = max_early_data;
+    s->s3.tmp.mask_k = max_early_data;
+`
     return 1;
 }
 

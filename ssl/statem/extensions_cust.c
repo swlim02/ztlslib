@@ -372,8 +372,9 @@ static int add_custom_ext_intern(SSL_CTX *ctx, ENDPOINT role,
      * for extension types that previously were not supported, but now are.
      */
     if (SSL_extension_supported(ext_type)
-            && ext_type != TLSEXT_TYPE_signed_certificate_timestamp)
+            && ext_type != TLSEXT_TYPE_signed_certificate_timestamp){
         return 0;
+    }
 
     /* Extension type must fit in 16 bits */
     if (ext_type > 0xffff)
@@ -385,7 +386,6 @@ static int add_custom_ext_intern(SSL_CTX *ctx, ENDPOINT role,
                           (exts->meths_count + 1) * sizeof(custom_ext_method));
     if (tmp == NULL)
         return 0;
-
     exts->meths = tmp;
     meth = exts->meths + exts->meths_count;
     memset(meth, 0, sizeof(*meth));
