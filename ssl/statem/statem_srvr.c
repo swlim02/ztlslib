@@ -92,6 +92,7 @@ static int ossl_statem_server13_read_transition(SSL *s, int mt) {
             } else {
                 if (mt == SSL3_MT_FINISHED) {
                     st->hand_state = TLS_ST_SR_FINISHED;
+                    s->early_data_state = SSL_DNS_FINISHED_READING2;
                     return 1;
                 }
             }
@@ -674,7 +675,6 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s) {
             return WRITE_TRAN_CONTINUE;
 
         case TLS_ST_SW_FINISHED:
-
             if(s->early_data_state == SSL_DNS_FINISHED_WRITING){
                 if (s->post_handshake_auth == SSL_PHA_REQUESTED) {
                     s->post_handshake_auth = SSL_PHA_EXT_RECEIVED;
@@ -686,12 +686,15 @@ static WRITE_TRAN ossl_statem_server13_write_transition(SSL *s) {
                     st->hand_state = TLS_ST_OK;
                     return WRITE_TRAN_CONTINUE;
                 }
-//                printf("num ticket : %zu\n", s->num_tickets);
+                s->early_data_state = SSL_DNS_FINISHED_READING2;
+                return WRITE_TRAN_FINISHED;
                 if (s->num_tickets > s->sent_tickets)
                     st->hand_state = TLS_ST_SW_SESSION_TICKET;
-                else
+                else{
+
                     st->hand_state = TLS_ST_OK;
-//                st->hand_state = TLS_ST_OK;
+
+                }
             }else{
                 st->hand_state = TLS_ST_EARLY_DATA;
             }
@@ -1584,6 +1587,7 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
 
         case TLS_ST_SW_FINISHED:
 
+
             if (SSL_IS_TLS13(s)) {
                 /* TLS 1.3 gets the secret size from the handshake md */
 
@@ -1607,22 +1611,30 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
                 if (!s->method->ssl3_enc->generate_master_secret(s,
                                                                  s->master_secret, s->handshake_secret, 0,
                                                                  &dummy)
-                                                                 || !s->method->ssl3_enc->change_cipher_state(s,
+                                                                 || !tls13_change_cipher_state(s,
                                                                                                               SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_SERVER_WRITE))
                     /* SSLfatal() already called */
                     return WORK_ERROR;
             }
 
             if(s->early_data_state == SSL_DNS_FINISHED_READING){
+                SSL tmp = *s;
                 char message[100] = "mmlab";
                 printf("sending application data from server to client : %s\n", message);
                 SSL_write(s, message, 6);
-
-
+                *s = tmp;
                 s->early_data_state = SSL_DNS_FINISHED_WRITING;
+                size_t dummy;
+                if (!s->method->ssl3_enc->generate_master_secret(s,
+                                                                 s->master_secret, s->handshake_secret, 0,
+                                                                 &dummy)
+                                                                 || !tls13_change_cipher_state(s,
+                                                                                               SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_READ))
+                    return WORK_ERROR;
             }
             if (statem_flush(s) != 1)
                 return WORK_MORE_A;
+
 #ifndef OPENSSL_NO_SCTP
             if (SSL_IS_DTLS(s) && s->hit) {
                 /*

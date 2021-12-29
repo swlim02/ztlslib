@@ -314,7 +314,7 @@ static info_cb get_callback(SSL *s) {
  * <=0: NBIO or error
  */
 static int state_machine(SSL *s, int server) {
-    printf("state_machine start \n");
+//    printf("state_machine start \n");
     BUF_MEM *buf = NULL;
     void (*cb)(const SSL *ssl, int type, int val) = NULL;
     OSSL_STATEM *st = &s->statem;
@@ -1002,18 +1002,11 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
     }
 
     while (1) {
-//        printf("%d\n", s->s3.npn_seen);
-//
-//        printf("%zu\n", s->s3.tmp.message_size);
-//        printf("%d\n", s->s3.num_renegotiations);
-//        printf("%d\n", s->s3.renegotiate);
-//        printf("%d\n", s->s3.total_renegotiations);
-//        printf("%d\n", s->s3.in_read_app_data);
-
 
 
         switch (st->read_state) {
             case READ_STATE_HEADER:
+
                 //            printf("READ_STATE_HEADER in read_state_machine func\n");
                 /* Get the state the peer wants to move to */
                 if (SSL_IS_DTLS(s)) {
@@ -1025,7 +1018,6 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                     //                printf("    read message header in read_state_machine func\n");
                     ret = tls_get_message_header(s, &mt);
                 }
-
                 if (ret == 0) {
                     /* Could be non-blocking IO */
                     return SUB_STATE_ERROR;
@@ -1038,6 +1030,7 @@ static SUB_STATE_RETURN read_state_machine_reduce(SSL *s) {
                     else
                         cb(s, SSL_CB_CONNECT_LOOP, 1);
                 }
+
                 /*
                  * Validate that we are allowed to move to the new state and move
                  * to that state if so

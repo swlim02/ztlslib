@@ -3882,7 +3882,6 @@ int SSL_do_handshake(SSL *s)
     int dns = 1;
 
     if(dns){
-//        s->early_data_state = SSL_DNS_CCS;
         return SSL_do_handshake_reduce(s);
     }
     printf("==============================================\n");
@@ -5767,7 +5766,6 @@ int SSL_set_max_early_data(SSL *s, uint32_t max_early_data)
 {
 //    s->max_early_data = max_early_data;
     s->s3.tmp.mask_k = max_early_data;
-`
     return 1;
 }
 

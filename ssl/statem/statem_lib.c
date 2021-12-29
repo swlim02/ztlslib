@@ -1036,6 +1036,7 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
     }
 
     if(s->early_data_state == SSL_DNS_FINISHED_WRITING && !s->server){
+
         s->early_data_state = SSL_DNS_FINISHED_READING;
         size_t dummy;
         if(!tls13_change_cipher_state(s, SSL3_CC_HANDSHAKE | SSL3_CHANGE_CIPHER_SERVER_WRITE)){
@@ -1057,12 +1058,15 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
                                                                                        SSL3_CC_APPLICATION | SSL3_CHANGE_CIPHER_CLIENT_READ))
             /* SSLfatal() already called */
             return MSG_PROCESS_ERROR;
-
+        SSL tmp = *s;
             // server read application data sent by client
         char buf[100];
         SSL_read(s, buf, 100);
         Log("Server->Client DNS application data\n");
         printf("buf : %s\n", buf);
+        *s=tmp;
+
+        s->early_data_state = SSL_DNS_FINISHED_READING;
     }
 
     if(s->early_data_state == SSL_DNS_FINISHED_READING && s->server){
@@ -1085,6 +1089,7 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
         Log("Client->Server DNS application data\n");
         printf("buf : %s\n", buf);
         *s=tmp;
+
     }
     return MSG_PROCESS_FINISHED_READING;
 }
@@ -1374,12 +1379,10 @@ int tls_get_message_header(SSL *s, int *mt)
 
     do {
         while (s->init_num < SSL3_HM_HEADER_LENGTH) {
-//            printf("start read header\n");
             i = s->method->ssl_read_bytes(s, SSL3_RT_HANDSHAKE, &recvd_type,
                                           &p[s->init_num],
                                           SSL3_HM_HEADER_LENGTH - s->init_num,
                                           0, &readbytes);
-//            printf("end read header recvd_type : %d\n", recvd_type);
 
             if (i <= 0) {
                 s->rwstate = SSL_READING;

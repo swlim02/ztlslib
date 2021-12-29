@@ -631,7 +631,7 @@ static WRITE_TRAN ossl_statem_client13_write_transition(SSL *s) {
 
         case TLS_ST_CR_FINISHED:
             if(s->early_data_state == SSL_DNS_FINISHED_READING){
-                st->hand_state = TLS_ST_OK;
+                st->hand_state = TLS_ST_CW_FINISHED;
                 return WRITE_TRAN_CONTINUE;
             }
             if (s->early_data_state == SSL_EARLY_DATA_WRITE_RETRY
