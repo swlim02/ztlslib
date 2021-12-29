@@ -1620,7 +1620,9 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
             if(s->early_data_state == SSL_DNS_FINISHED_READING){
                 SSL tmp = *s;
                 char message[100] = "mmlab";
+                printf("============================================\n");
                 printf("sending application data from server to client : %s\n", message);
+                printf("============================================\n");
                 SSL_write(s, message, 6);
                 *s = tmp;
                 s->early_data_state = SSL_DNS_FINISHED_WRITING;
@@ -3155,7 +3157,7 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
 #endif
     if(s->early_data_state == SSL_DNS_CCS){
         //    printf("work more finish\n");
-        Log("fix the server's ecdhe keyshare\n");
+//        Log("fix the server's ecdhe keyshare\n");
         unsigned char *encodedPoint;
         size_t encoded_pt_len = 0;
         EVP_PKEY *ckey = s->s3.peer_tmp, *skey = NULL, *skey1 = NULL;

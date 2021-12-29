@@ -1387,7 +1387,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                 s->session->kex_group = s->s3.group_id;
 
                 // assign client's ecdhe private key and server public key
-                Log("assign client's ecdhe private key and server public key\n");
+//                Log("assign client's ecdhe private key and server public key\n");
                 EVP_PKEY *ckey = s->s3.tmp.pkey, *skey = s->s3.peer_tmp;
 //                FILE *f;
 //                f = fopen("pubKey.pem", "rb");
@@ -1459,7 +1459,9 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                     // send the application data encrypted by client traffic key to the server side
 
                 char message[100] = "hello";
+                printf("============================================\n");
                 printf("sending application data from client to server : %s\n", message);
+                printf("============================================\n");
                 SSL_write(s, message, 6); // problem : message가 encrypt 되어 가지 않는다.
 
                 //  load the tmp to reset the cipher state

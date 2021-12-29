@@ -918,27 +918,27 @@ static SUB_STATE_RETURN read_state_machine(SSL *s) {
                         return SUB_STATE_ERROR;
 
                     case MSG_PROCESS_FINISHED_READING:
-                printf("    MSG_PROCESS_FINISHED_READING in read_state_machine func\n");
+//                printf("    MSG_PROCESS_FINISHED_READING in read_state_machine func\n");
                         if (SSL_IS_DTLS(s)) {
                             dtls1_stop_timer(s);
                         }
                         return SUB_STATE_FINISHED;
 
                     case MSG_PROCESS_CONTINUE_PROCESSING:
-                printf("    MSG_PROCESS_CONTINUE_PROCESSING in read_state_machine func\n");
+//                printf("    MSG_PROCESS_CONTINUE_PROCESSING in read_state_machine func\n");
                         st->read_state = READ_STATE_POST_PROCESS;
                         st->read_state_work = WORK_MORE_A;
                         break;
 
                     default:
-                printf("    default in read_state_machine func\n");
+//                printf("    default in read_state_machine func\n");
                         st->read_state = READ_STATE_HEADER;
                         break;
                 }
                 break;
 
             case READ_STATE_POST_PROCESS:
-                printf("READ_STATE_POST_PROCESS in read_state_machine func\n");
+//                printf("READ_STATE_POST_PROCESS in read_state_machine func\n");
                 st->read_state_work = post_process_message(s, st->read_state_work);
                 switch (st->read_state_work) {
                     case WORK_ERROR:
@@ -1221,13 +1221,11 @@ static SUB_STATE_RETURN write_state_machine(SSL *s) {
 
     cb = get_callback(s);
     if (s->server) {
-        Log("not using dns\n");
         transition = ossl_statem_server_write_transition;
         pre_work = ossl_statem_server_pre_work;
         post_work = ossl_statem_server_post_work;
         get_construct_message_f = ossl_statem_server_construct_message;
     } else if (!s->server) {
-        Log("not using dns\n");
         transition = ossl_statem_client_write_transition;
         pre_work = ossl_statem_client_pre_work;
         post_work = ossl_statem_client_post_work;

@@ -1062,8 +1062,10 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
             // server read application data sent by client
         char buf[100];
         SSL_read(s, buf, 100);
+        printf("============================================\n");
         Log("Server->Client DNS application data\n");
         printf("buf : %s\n", buf);
+        printf("============================================\n");
         *s=tmp;
 
         s->early_data_state = SSL_DNS_FINISHED_READING;
@@ -1086,8 +1088,10 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
             // server read application data sent by client
         char buf[100];
         SSL_read(s, buf, 100);
+        printf("============================================\n");
         Log("Client->Server DNS application data\n");
         printf("buf : %s\n", buf);
+        printf("============================================\n");
         *s=tmp;
 
     }
