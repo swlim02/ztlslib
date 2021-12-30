@@ -1459,11 +1459,15 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                     // send the application data encrypted by client traffic key to the server side
 
                 char message[100] = "hello";
+
+                SSL_write(s, message, 6); // problem : message가 encrypt 되어 가지 않는다.
                 printf("============================================\n");
                 printf("sending application data from client to server : %s\n", message);
+#include <time.h>
+                struct timespec send_ctos;
+                clock_gettime(CLOCK_MONOTONIC, &send_ctos);
+                printf("%f\n",(send_ctos.tv_sec) + (send_ctos.tv_nsec) / 1000000000.0);
                 printf("============================================\n");
-                SSL_write(s, message, 6); // problem : message가 encrypt 되어 가지 않는다.
-
                 //  load the tmp to reset the cipher state
                 *s = tmp;
 

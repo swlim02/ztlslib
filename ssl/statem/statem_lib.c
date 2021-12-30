@@ -1065,6 +1065,10 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
         printf("============================================\n");
         Log("Server->Client DNS application data\n");
         printf("buf : %s\n", buf);
+#include <time.h>
+        struct timespec receive_stoc;
+        clock_gettime(CLOCK_MONOTONIC, &receive_stoc);
+        printf("%f\n",(receive_stoc.tv_sec) + (receive_stoc.tv_nsec) / 1000000000.0);
         printf("============================================\n");
         *s=tmp;
 
@@ -1086,15 +1090,18 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
             return MSG_PROCESS_ERROR;
 
             // server read application data sent by client
-        char buf[100];
-        SSL_read(s, buf, 100);
-        printf("============================================\n");
-        Log("Client->Server DNS application data\n");
-        printf("buf : %s\n", buf);
-        printf("============================================\n");
-        *s=tmp;
-
+            char buf[100];
+            SSL_read(s, buf, 100);
+            printf("============================================\n");
+            Log("Client->Server DNS application data\n");
+            printf("buf : %s\n", buf);
+            struct timespec receive_ctos;
+            clock_gettime(CLOCK_MONOTONIC, &receive_ctos);
+            printf("%f\n",(receive_ctos.tv_sec) + (receive_ctos.tv_nsec) / 1000000000.0);
+            printf("============================================\n");
+            *s=tmp;
     }
+
     return MSG_PROCESS_FINISHED_READING;
 }
 

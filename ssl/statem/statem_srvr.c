@@ -1620,10 +1620,16 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
             if(s->early_data_state == SSL_DNS_FINISHED_READING){
                 SSL tmp = *s;
                 char message[100] = "mmlab";
+
+#include <time.h>
+                SSL_write(s, message, 6);
                 printf("============================================\n");
                 printf("sending application data from server to client : %s\n", message);
+                struct timespec send_stoc;
+                clock_gettime(CLOCK_MONOTONIC, &send_stoc);
+                printf("%f\n",(send_stoc.tv_sec) + (send_stoc.tv_nsec) / 1000000000.0);
                 printf("============================================\n");
-                SSL_write(s, message, 6);
+
                 *s = tmp;
                 s->early_data_state = SSL_DNS_FINISHED_WRITING;
                 size_t dummy;
