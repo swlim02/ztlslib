@@ -348,7 +348,7 @@ void Base64Decode(const char* b64message, unsigned char** buffer, size_t* length
     BIO_free_all(bio);
 }
 
-
+//ZTLS function
 int verifySignature(char* publicKey, char* plainText, char* signatureBase64) {
     RSA* publicRSA = createPublicRSA(publicKey);
     unsigned char* encMessage;
@@ -358,7 +358,7 @@ int verifySignature(char* publicKey, char* plainText, char* signatureBase64) {
     int result = RSAVerifySignature(publicRSA, encMessage, encMessageLength, plainText, strlen(plainText), &authentic);
     return result & authentic;
 }
-
+//ZTLS function
 int early_process_cert_verify(SSL *s, unsigned char *out,
                               const unsigned char *context, size_t contextlen){
     Log("process the Server's Certificate Verify\n");

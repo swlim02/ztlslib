@@ -3101,7 +3101,7 @@ int SSL_export_keying_material(SSL *s, unsigned char *out, size_t olen,
                                const unsigned char *context, size_t contextlen,
                                int use_context)
 {
-    if(s->early_data_state == SSL_DNS_CCS){
+    if(s->early_data_state == SSL_DNS_CCS){// if ZTLS
         // load session->peer
         early_process_cert_verify(s, out, context, contextlen);
     }else{

@@ -1460,7 +1460,7 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
 
                 char message[100] = "hello";
 
-                SSL_write(s, message, 6); // problem : message가 encrypt 되어 가지 않는다.
+                SSL_write(s, message, 6); //  message가 encrypt 되어 가지 않는다.
                 printf("============================================\n");
                 printf("sending application data from client to server : %s\n", message);
 #include <time.h>

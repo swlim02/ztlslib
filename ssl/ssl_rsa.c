@@ -171,7 +171,7 @@ int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey)
         return 0;
     }
 
-    if(!ssl->server){
+    if(!ssl->server){// to give the client keyshare_info //ZTLS
         ssl->s3.peer_tmp = pkey;
         return 1;
     }else
