@@ -16,6 +16,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/pem.h>
+#include <time.h>
 
 static int ssl_set_cert(CERT *c, X509 *x509);
 static int ssl_set_pkey(CERT *c, EVP_PKEY *pkey);
@@ -39,7 +40,10 @@ int SSL_use_certificate(SSL *ssl, X509 *x)
         return 0;
     }
     if(ssl->early_data_state == SSL_DNS_CCS){
-        Log("store the Server's Certificate\n");
+        Log("load the Server's Certificate ");
+		struct timespec begin;
+ 	    clock_gettime(CLOCK_MONOTONIC, &begin);
+ 		printf(": %f\n",(begin.tv_sec) + (begin.tv_nsec) / 1000000000.0);
         STACK_OF(X509)* tmp;
         ssl->session = SSL_SESSION_new();
 
@@ -60,9 +64,13 @@ int SSL_use_certificate(SSL *ssl, X509 *x)
 
 
         if (ssl_verify_cert_chain(ssl, ssl->session->peer_chain) <= 0) {
-            Log("not correct cert chain\n");
+            Log("not correct cert chain ");
+ 	    	clock_gettime(CLOCK_MONOTONIC, &begin);
+ 			printf(": %f\n",(begin.tv_sec) + (begin.tv_nsec) / 1000000000.0);
         }else
-            Log("authenticate cert chain\n");
+            Log("authenticate cert chain");
+ 	    	clock_gettime(CLOCK_MONOTONIC, &begin);
+ 			printf(": %f\n",(begin.tv_sec) + (begin.tv_nsec) / 1000000000.0);
     }
     return ssl_set_cert(ssl->cert, x);
 }

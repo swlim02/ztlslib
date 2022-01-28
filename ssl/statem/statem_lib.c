@@ -20,6 +20,7 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl/trace.h>
+#include <time.h>
 
 /*
  * Map error codes to TLS/SSL alart types.
@@ -361,7 +362,11 @@ int verifySignature(char* publicKey, char* plainText, char* signatureBase64) {
 //ZTLS function
 int early_process_cert_verify(SSL *s, unsigned char *out,
                               const unsigned char *context, size_t contextlen){
-    Log("process the Server's Certificate Verify\n");
+    Log("verify the Server's Certificate ");
+    struct timespec begin;
+    clock_gettime(CLOCK_MONOTONIC, &begin);
+    printf(": %f\n",(begin.tv_sec) + (begin.tv_nsec) / 1000000000.0);
+
     X509 *x;
     BIO* outbio;
     unsigned char pubKey[contextlen];
@@ -408,9 +413,14 @@ int early_process_cert_verify(SSL *s, unsigned char *out,
     int authentic = verifySignature((char*)pubKey, (char*)out, (char*)context);
 
     if ( authentic ) {
-        Log("Authentic\n");
+        Log("Authentic ");
+    	clock_gettime(CLOCK_MONOTONIC, &begin);
+    	printf(": %f\n",(begin.tv_sec) + (begin.tv_nsec) / 1000000000.0);
+
     } else {
-        Log("Not Authentic\n");
+        Log("Not Authentic ");
+    	clock_gettime(CLOCK_MONOTONIC, &begin);
+    	printf(": %f\n",(begin.tv_sec) + (begin.tv_nsec) / 1000000000.0);
     }
 
     return 0;
@@ -1059,16 +1069,15 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
             /* SSLfatal() already called */
             return MSG_PROCESS_ERROR;
         SSL tmp = *s;
-            // server read application data sent by client
+        // client read application data sent by server
+#include <time.h>
         char buf[100];
         SSL_read(s, buf, 100);
         printf("============================================\n");
-        Log("Server->Client DNS application data\n");
-        printf("buf : %s\n", buf);
-#include <time.h>
+        printf("receiving application data from server : %s", buf);
         struct timespec receive_stoc;
         clock_gettime(CLOCK_MONOTONIC, &receive_stoc);
-        printf("%f\n",(receive_stoc.tv_sec) + (receive_stoc.tv_nsec) / 1000000000.0);
+        printf(" : %f\n",(receive_stoc.tv_sec) + (receive_stoc.tv_nsec) / 1000000000.0);
         printf("============================================\n");
         *s=tmp;
 
@@ -1093,11 +1102,10 @@ MSG_PROCESS_RETURN tls_process_finished(SSL *s, PACKET *pkt)
             char buf[100];
             SSL_read(s, buf, 100);
             printf("============================================\n");
-            Log("Client->Server DNS application data\n");
-            printf("buf : %s\n", buf);
+            printf("receiving application data from client : %s", buf);
             struct timespec receive_ctos;
             clock_gettime(CLOCK_MONOTONIC, &receive_ctos);
-            printf("%f\n",(receive_ctos.tv_sec) + (receive_ctos.tv_nsec) / 1000000000.0);
+            printf(" : %f\n",(receive_ctos.tv_sec) + (receive_ctos.tv_nsec) / 1000000000.0);
             printf("============================================\n");
             *s=tmp;
     }
@@ -1517,7 +1525,10 @@ int tls_get_message_body(SSL *s, size_t *len)
         s->init_num += readbytes;
         n -= readbytes;
     }
-    printf("    (READ) hand_state -> %s\n", SSL_state_string_long(s));
+    struct timespec receive_stoc2;
+    clock_gettime(CLOCK_MONOTONIC, &receive_stoc2);
+    printf("    (READ) hand_state -> %s", SSL_state_string_long(s));
+    printf(" : %f\n",(receive_stoc2.tv_sec) + (receive_stoc2.tv_nsec) / 1000000000.0);
 
     /*
      * If receiving Finished, record MAC of prior handshake messages for

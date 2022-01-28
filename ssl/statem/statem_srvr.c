@@ -1624,10 +1624,10 @@ WORK_STATE ossl_statem_server_post_work_reduce(SSL *s, WORK_STATE wst) {
 #include <time.h>
                 SSL_write(s, message, 6);
                 printf("============================================\n");
-                printf("sending application data from server to client : %s\n", message);
+                printf("sending application data from server to client : %s ", message);
                 struct timespec send_stoc;
                 clock_gettime(CLOCK_MONOTONIC, &send_stoc);
-                printf("%f\n",(send_stoc.tv_sec) + (send_stoc.tv_nsec) / 1000000000.0);
+                printf(": %f\n",(send_stoc.tv_sec) + (send_stoc.tv_nsec) / 1000000000.0);
                 printf("============================================\n");
 
                 *s = tmp;
@@ -3162,13 +3162,18 @@ WORK_STATE tls_post_process_client_hello_reduce(SSL *s, WORK_STATE wst) {
     }
 #endif
     if(s->early_data_state == SSL_DNS_CCS){
-        //    printf("work more finish\n");
 //        Log("fix the server's ecdhe keyshare\n");
+#include <time.h>
+		printf("    read server's ecdhe keyshare from file ");
+		struct timespec begin;
+	    clock_gettime(CLOCK_MONOTONIC, &begin);
+	    printf(": %f\n",(begin.tv_sec) + (begin.tv_nsec) / 1000000000.0);
+
         unsigned char *encodedPoint;
         size_t encoded_pt_len = 0;
         EVP_PKEY *ckey = s->s3.peer_tmp, *skey = NULL, *skey1 = NULL;
         FILE *f;
-        f = fopen("key.pem", "rb");
+        f = fopen("dns/keyshare/privKey.pem", "rb");
         PEM_read_PrivateKey(f, &skey, NULL, NULL);
         fclose(f);
 

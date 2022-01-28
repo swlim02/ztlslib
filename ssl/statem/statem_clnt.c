@@ -1456,46 +1456,43 @@ WORK_STATE ossl_statem_client_post_work_reduce(SSL *s, WORK_STATE wst) {
                     /* SSLfatal() already called */
                     return WORK_ERROR;
 
-                    // send the application data encrypted by client traffic key to the server side
-
+                // send the application data encrypted by client traffic key to the server side
                 char message[100] = "hello";
-
-                SSL_write(s, message, 6); //  message가 encrypt 되어 가지 않는다.
+                SSL_write(s, message, 6); 
                 printf("============================================\n");
-                printf("sending application data from client to server : %s\n", message);
+                printf("sending application data from client to server : %s ", message);
 #include <time.h>
                 struct timespec send_ctos;
                 clock_gettime(CLOCK_MONOTONIC, &send_ctos);
-                printf("%f\n",(send_ctos.tv_sec) + (send_ctos.tv_nsec) / 1000000000.0);
+                printf(": %f\n",(send_ctos.tv_sec) + (send_ctos.tv_nsec) / 1000000000.0);
                 printf("============================================\n");
                 //  load the tmp to reset the cipher state
                 *s = tmp;
 
-                    if (SSL_IS_DTLS(s)) {
+                if (SSL_IS_DTLS(s)) {
 #ifndef OPENSSL_NO_SCTP
-                        if (s->hit) {
-                            /*
-                             * Change to new shared key of SCTP-Auth, will be ignored if
-                             * no SCTP used.
-                             */
-                            BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_SCTP_NEXT_AUTH_KEY,
-                                     0, NULL);
-                        }
+                    if (s->hit) {
+                        /*
+                         * Change to new shared key of SCTP-Auth, will be ignored if
+                         * no SCTP used.
+                         */
+                        BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_SCTP_NEXT_AUTH_KEY,0, NULL);
+                    }
 #endif
+					dtls1_reset_seq_numbers(s, SSL3_CC_WRITE);
+                }
 
-dtls1_reset_seq_numbers(s, SSL3_CC_WRITE);
-                    }
-
-                    // send the packet
-                    if (!statem_flush(s)) {
-                        return WORK_MORE_A;
-                    }
-                    // back to the original method
-                    s->method = TLS_client_method();
-            }else {
-                if (statem_flush(s) != 1)
+                // send the packet
+                if (!statem_flush(s)) {
+                    return WORK_MORE_A;
+                }
+                // back to the original method
+                s->method = TLS_client_method();
+			}else {
+            	if (statem_flush(s) != 1)
                     return WORK_MORE_B;
             }
+
             if (SSL_IS_TLS13(s)) {
                 if (!tls13_save_handshake_digest_for_pha(s)) {
                     /* SSLfatal() already called */

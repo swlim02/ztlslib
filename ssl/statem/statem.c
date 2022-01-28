@@ -17,6 +17,7 @@
 #include "../ssl_local.h"
 #include "statem_local.h"
 #include <assert.h>
+#include <time.h>
 
 /*
  * This file implements the SSL/TLS/DTLS state machines.
@@ -527,7 +528,10 @@ static int state_machine(SSL *s, int server) {
 }
 
 static int state_machine_reduce(SSL *s, int server) {
-    printf("state_machine reduce start \n");
+//	struct timespec begin;
+//    clock_gettime(CLOCK_MONOTONIC, &begin);
+//    printf("state_machine reduce start");
+//	printf(" : %f\n",(begin.tv_sec) + (begin.tv_nsec) / 1000000000.0);
     BUF_MEM *buf = NULL;
     void (*cb)(const SSL *ssl, int type, int val) = NULL;
     OSSL_STATEM *st = &s->statem;
@@ -1381,6 +1385,7 @@ static SUB_STATE_RETURN write_state_machine_reduce(SSL *s) {
         get_construct_message_f = ossl_statem_client_construct_message;
     }
 
+	struct timespec begin;
     while (1) {
         switch (st->write_state) {
             case WRITE_STATE_TRANSITION:
@@ -1457,7 +1462,9 @@ static SUB_STATE_RETURN write_state_machine_reduce(SSL *s) {
                 /* Fall through */
 
             case WRITE_STATE_SEND:
-                printf("    (WRITE) hand_state -> %s\n", SSL_state_string_long(s));
+    			clock_gettime(CLOCK_MONOTONIC, &begin);
+                printf("    (WRITE) hand_state -> %s", SSL_state_string_long(s));
+				printf(" : %f\n",(begin.tv_sec) + (begin.tv_nsec) / 1000000000.0);
                 //            printf("WRITE_STATE_SEND in write_state_machine func \n");
                 if (SSL_IS_DTLS(s) && st->use_timer) {
                     dtls1_start_timer(s);

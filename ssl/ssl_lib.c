@@ -25,6 +25,7 @@
 #include "internal/cryptlib.h"
 #include "internal/refcount.h"
 #include "internal/ktls.h"
+#include <time.h>
 
 static int ssl_undefined_function_1(SSL *ssl, SSL3_RECORD *r, size_t s, int t,
                                     SSL_MAC_BUF *mac, size_t macsize)
@@ -3913,9 +3914,13 @@ int SSL_do_handshake(SSL *s)
 }
 int SSL_do_handshake_reduce(SSL *s)
 {
+	struct timespec begin;
+    clock_gettime(CLOCK_MONOTONIC, &begin);
     printf("==============================================\n");
-    printf("start do handshake reduce\n");
+    printf("start do handshake reduce");
+    printf(" : %f\n",(begin.tv_sec) + (begin.tv_nsec) / 1000000000.0);
     printf("==============================================\n");
+
     int ret = 1;
 
     if (s->handshake_func == NULL) {

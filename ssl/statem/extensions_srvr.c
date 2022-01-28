@@ -11,6 +11,7 @@
 #include "../ssl_local.h"
 #include "statem_local.h"
 #include "internal/cryptlib.h"
+#include <time.h>
 
 #define COOKIE_STATE_FORMAT_VERSION     0
 
@@ -1601,25 +1602,33 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
         return EXT_RETURN_FAIL;
     }
 
-    if ((ginf = tls1_group_id_lookup(s->ctx, s->s3.group_id)) == NULL) {
+	// TODO: add application Interface
+	// Server's ECDHE or DHE group
+    if ((ginf = tls1_group_id_lookup(s->ctx, s->s3.group_id)) == NULL) { // supporting group check, ZTLS will use 'enum 29' group
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
         return EXT_RETURN_FAIL;
     }
 
     if (!ginf->is_kem) {
         /* Regular KEX */
-        // read server key in key.pem file
+		// read server key 
+        if(s->early_data_state == SSL_DNS_FINISHED_READING) {
+		 	// TODO: add application Interface 
+	    	// Server's ECDHE private key on memory : s->s3.tmp.pky which came from privKey.pem
+	        skey = s->s3.tmp.pkey;
+//            FILE *f;
+//            f = fopen("dns/keyshare/privKey.pem", "rb");
+//            PEM_read_PrivateKey(f, &skey, NULL, NULL);
+//            fclose(f);
 
-        if(s->early_data_state == SSL_DNS_CCS)
-            skey = s->s3.tmp.pkey;
-        else{
-            // 나중 수정 필요(원래 server ecdhe 만드는 것처럼 바꾸기)
-	    // TODO: add application Interface 
-	    // Server's ECDHE private key
-            FILE *f;
-            f = fopen("key.pem", "rb");
-            PEM_read_PrivateKey(f, &skey, NULL, NULL);
-            fclose(f);
+		} else {
+			//nothing
+			//read server key from the file already in statem_srvr.c
+//			printf("SSL_DNS_CCS read server key from memory\n");
+//			printf("%d\n",s->early_data_state);
+//          skey = s->s3.tmp.pkey;
+			// generate skey for normal TLS	
+			skey = ssl_generate_pkey(s, ckey);
         }
         if (skey == NULL) {
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_MALLOC_FAILURE);
@@ -1651,6 +1660,10 @@ EXT_RETURN tls_construct_stoc_key_share(SSL *s, WPACKET *pkt,
             /* SSLfatal() already called */
             return EXT_RETURN_FAIL;
         }
+
+		struct timespec begin;
+	    clock_gettime(CLOCK_MONOTONIC, &begin);
+    	printf("ECDHE key is prepared : %f\n",(begin.tv_sec) + (begin.tv_nsec) / 1000000000.0);
 
         // store the previous SSL*s to reset the cipher state
 //        SSL tmp = *s;
