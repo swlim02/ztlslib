@@ -1,3 +1,5 @@
+please, read ZTLS_README.md
+
 Welcome to the OpenSSL Project
 ==============================
 
