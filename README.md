@@ -1,4 +1,4 @@
-Welcome to the ZTLS Project
+Welcome to the ztlslib Project
 ==============================
 The ztlslib is a library that implements ZTLS handshake based on OpenSSL. ZTLS leverages DNS to establish secure sessions with 0-RTT. For details, see 'ZTLS: A DNS-based Approach to Zero Round Trip Delay in TLS handshake' published in THE WEB CONFERENCE 2023. For information about OpenSSL, see OPENSSL-README.md.
 
